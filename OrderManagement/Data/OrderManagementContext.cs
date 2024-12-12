@@ -58,12 +58,15 @@ public partial class OrderManagementContext : DbContext
             entity.Property(e => e.ProductName).HasMaxLength(100);
             entity.Property(e => e.Result).HasMaxLength(100);
 
-            entity.HasOne(d => d.Customer).WithMany(p => p.Logs)
+            // Log, Customer ve Order ile ilişkilendiriliyor
+            entity.HasOne(d => d.Customer)
+                .WithMany(p => p.Logs) // Customer, Logs koleksiyonuna sahip
                 .HasForeignKey(d => d.CustomerId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("FK_Logs_Customers");
 
-            entity.HasOne(d => d.Order).WithMany(p => p.Logs)
+            entity.HasOne(d => d.Order)
+                .WithMany() // Log, sadece Order'a bir ilişkiyi belirtir
                 .HasForeignKey(d => d.OrderId)
                 .HasConstraintName("FK_Logs_Orders");
         });
@@ -83,11 +86,14 @@ public partial class OrderManagementContext : DbContext
             entity.Property(e => e.ProductId).HasColumnName("ProductID");
             entity.Property(e => e.TotalPrice).HasColumnType("decimal(18, 2)");
 
-            entity.HasOne(d => d.Customer).WithMany(p => p.Orders)
+            // İlişkiler
+            entity.HasOne(d => d.Customer)
+                .WithMany(p => p.Orders)  // Müşteri, Orders koleksiyonuna sahip
                 .HasForeignKey(d => d.CustomerId)
                 .HasConstraintName("FK_Orders_Customers");
 
-            entity.HasOne(d => d.Product).WithMany(p => p.Orders)
+            entity.HasOne(d => d.Product)
+                .WithMany()  // Ürün, siparişlere sahip değil
                 .HasForeignKey(d => d.ProductId)
                 .HasConstraintName("FK_Orders_Products");
         });

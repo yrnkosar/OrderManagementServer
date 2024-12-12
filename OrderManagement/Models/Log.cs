@@ -25,7 +25,7 @@ public partial class Log
 
     public string? Result { get; set; }
 
-    public virtual Customer? Customer { get; set; }
-
-    public virtual Order? Order { get; set; }
+    // İlişkiler
+    public Order Order { get; set; } // Log, bir siparişle ilişkilendirilecek
+    public Customer Customer { get; set; } // Log, bir müşteriyle ilişkilendirilecek
 }

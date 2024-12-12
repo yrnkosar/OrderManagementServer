@@ -2,6 +2,8 @@
 using OrderManagement.Models;
 using OrderManagement.Data;
 using System.Linq;
+using System.Collections.Generic;
+using Microsoft.EntityFrameworkCore;
 
 namespace OrderManagement.Controllers
 {
@@ -16,17 +18,35 @@ namespace OrderManagement.Controllers
             _context = context;
         }
 
+
         // Get all products
         [HttpGet]
         public ActionResult<IEnumerable<Product>> GetAllProducts()
         {
-            return Ok(_context.Products.ToList());
+            var products = _context.Products.ToList(); // Ürünler listeleniyor
+            return Ok(products);
+        }
+
+        // Get a specific product by ID
+        [HttpGet("{id}")]
+        public ActionResult<Product> GetProductById(int id)
+        {
+            var product = _context.Products.FirstOrDefault(p => p.ProductId == id);
+            if (product == null)
+                return NotFound();
+
+            return Ok(product);
         }
 
         // Add new product
         [HttpPost]
         public ActionResult<Product> AddProduct([FromBody] Product product)
         {
+            if (product == null)
+            {
+                return BadRequest("Product is null");
+            }
+
             _context.Products.Add(product);
             _context.SaveChanges();
 
@@ -45,6 +65,35 @@ namespace OrderManagement.Controllers
             _context.SaveChanges();
 
             return Ok(existingProduct);
+        }
+
+        // Get orders for a specific product
+        [HttpGet("{id}/orders")]
+        public ActionResult<IEnumerable<Order>> GetProductOrders(int id)
+        {
+            var orders = _context.Orders.Where(o => o.ProductId == id).ToList(); // İlgili ürünle yapılmış siparişler
+            if (orders == null || orders.Count == 0)
+                return NotFound();
+
+            return Ok(orders);
+        }
+
+        // Add new order for a specific product
+        [HttpPost("{id}/orders")]
+        public ActionResult<Order> AddOrder(int id, [FromBody] Order order)
+        {
+            var product = _context.Products.FirstOrDefault(p => p.ProductId == id);
+            if (product == null)
+                return NotFound();
+
+            // Set the product for the order
+            order.ProductId = product.ProductId;
+            order.TotalPrice = order.Quantity * product.Price;
+
+            _context.Orders.Add(order);
+            _context.SaveChanges();
+
+            return CreatedAtAction(nameof(GetProductOrders), new { id = product.ProductId }, order);
         }
     }
 }
