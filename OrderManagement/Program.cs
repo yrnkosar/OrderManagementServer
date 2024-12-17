@@ -16,7 +16,6 @@ public class Program
         // Add services to the container.
         builder.Services.AddControllers();
 
-        // JWT Authentication yapýlandýrmasý
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
@@ -27,17 +26,17 @@ public class Program
                     ValidateIssuer = true,
                     ValidateAudience = true,
                     ValidateLifetime = true,
-                    ValidIssuer = builder.Configuration["Jwt:Issuer"],  // JWT Issuer (Yayýncý)
-                    ValidAudience = builder.Configuration["Jwt:Audience"],  // JWT Audience (Hedef Kitle)
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])) // JWT Secret Key (Gizli Anahtar)
+                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                    ValidAudience = builder.Configuration["Jwt:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
                 };
             });
 
-        // Authorization için rol tabanlý yetkilendirme ekleyelim
         builder.Services.AddAuthorization(options =>
         {
             options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
         });
+
 
         // DbContext ve diðer servisleri ekleyelim
         builder.Services.AddDbContext<OrderManagementContext>(options =>

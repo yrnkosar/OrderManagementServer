@@ -4,6 +4,7 @@ using OrderManagement.Models;
 using System.Linq;
 using System;
 using OrderManagement.Data;
+using Microsoft.AspNetCore.Authorization;
 
 namespace OrderManagement.Controllers
 {
@@ -17,7 +18,48 @@ namespace OrderManagement.Controllers
         {
             _context = context;
         }
+        [HttpPost("process-orders")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ProcessOrders()
+        {
+            // Admin işlemleri
+            var adminTask = Task.Run(() =>
+            {
+                foreach (var product in _context.Products)
+                {
+                    product.Stock += 10; // Örnek stok artırma işlemi
+                }
+                _context.SaveChanges();
+            });
 
+            // Müşteri işlemleri
+            var customerTask = Task.Run(() =>
+            {
+                foreach (var order in _context.Orders.Where(o => o.OrderStatus == "Pending"))
+                {
+                    ProcessOrder(order);
+                }
+            });
+
+            await Task.WhenAll(adminTask, customerTask);
+
+            return Ok("Tüm işlemler tamamlandı.");
+        }
+
+        private void ProcessOrder(Order order)
+        {
+            var product = _context.Products.Find(order.ProductId);
+            if (product != null && product.Stock >= order.Quantity)
+            {
+                product.Stock -= order.Quantity;
+                order.OrderStatus = "Completed";
+            }
+            else
+            {
+                order.OrderStatus = "Cancelled";
+            }
+            _context.SaveChanges();
+        }
         [HttpPost]
         public ActionResult<Order> PlaceOrder([FromBody] Order order)
         {

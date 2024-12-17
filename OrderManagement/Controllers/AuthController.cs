@@ -27,17 +27,17 @@ namespace OrderManagement.Controllers
                 return Unauthorized("Geçersiz kullanıcı adı veya şifre.");
 
             var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, customer.CustomerName),
-                new Claim(ClaimTypes.Role, customer.CustomerType) // Admin veya Normal rolü
-            };
+    {
+        new Claim(ClaimTypes.Name, customer.CustomerName),
+        new Claim(ClaimTypes.Role, customer.CustomerType)
+    };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("your-secret-key-should-be-at-least-16-characters-long"));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
                 issuer: "MyApp",
-                audience: "MayAPI",
+                audience: "MyAPI",
                 claims: claims,
                 expires: DateTime.Now.AddHours(1),
                 signingCredentials: creds
@@ -45,16 +45,15 @@ namespace OrderManagement.Controllers
 
             return Ok(new
             {
-                Message = "Başarılı giriş",
                 Token = new JwtSecurityTokenHandler().WriteToken(token)
             });
         }
+
+
+        public class LoginRequest
+        {
+            public string CustomerName { get; set; }
+            public string Password { get; set; }
+        }
     }
 }
-
-
-public class LoginRequest
-    {
-        public string CustomerName { get; set; }
-        public string Password { get; set; }
-    }

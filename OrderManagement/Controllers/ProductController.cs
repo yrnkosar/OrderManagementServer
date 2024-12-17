@@ -55,20 +55,24 @@ namespace OrderManagement.Controllers
             return CreatedAtAction(nameof(GetAllProducts), new { id = product.ProductId }, product);
         }
 
-        [HttpPut("{id}")]
+        private static readonly object _lock = new object();
+
+        [HttpPut("{id}/update-stock")]
         [Authorize(Roles = "Admin")]
-        public ActionResult<Product> UpdateProductStock(int id, [FromBody] Product product)
+        public async Task<IActionResult> UpdateProductStock(int id, [FromBody] int newStock)
         {
-            var existingProduct = _context.Products.Find(id);
-            if (existingProduct == null)
-                return NotFound();
+            var product = await _context.Products.FindAsync(id);
+            if (product == null)
+                return NotFound("Ürün bulunamadı.");
 
-            existingProduct.Stock = product.Stock;
-            _context.SaveChanges();
+            lock (_lock) // Aynı anda birden fazla işlem yapılmasını engeller
+            {
+                product.Stock = newStock;
+                _context.SaveChanges();
+            }
 
-            return Ok(existingProduct);
+            return Ok(product);
         }
-
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public ActionResult DeleteProduct(int id)

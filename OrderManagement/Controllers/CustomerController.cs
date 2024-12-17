@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using OrderManagement.Models;
 using OrderManagement.Services;
 using System.Threading.Tasks;
@@ -17,6 +18,7 @@ namespace OrderManagement.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllCustomers()
         {
             var customers = await _customerService.GetAllCustomersAsync();
