@@ -7,11 +7,13 @@ public partial class Product
 {
     public int ProductId { get; set; }
 
-    public string ProductName { get; set; } = null!;
+    public string ProductName { get; set; } 
 
     public int Stock { get; set; }
 
     public decimal Price { get; set; }
 
-    //public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
+    public string Description { get; set; } = null!;
+    public string Photo { get; set; } = null!;
+ 
 }

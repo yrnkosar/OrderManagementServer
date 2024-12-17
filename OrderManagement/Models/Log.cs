@@ -26,6 +26,6 @@ public partial class Log
     public string? Result { get; set; }
 
     // İlişkiler
-    public Order Order { get; set; } // Log, bir siparişle ilişkilendirilecek
-    public Customer Customer { get; set; } // Log, bir müşteriyle ilişkilendirilecek
+    public Order Order { get; set; } = null!;
+    public Customer Customer { get; set; } = null!;
 }

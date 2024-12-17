@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OrderManagement.Models;
-using OrderManagement.Data;
+
 using System.Linq;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using OrderManagement.Data;
+using Microsoft.AspNetCore.Authorization;
 
 namespace OrderManagement.Controllers
 {
@@ -37,9 +39,9 @@ namespace OrderManagement.Controllers
 
             return Ok(product);
         }
-
-        // Add new product
+        // Admin işlemleri için Authorization ekliyoruz.
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public ActionResult<Product> AddProduct([FromBody] Product product)
         {
             if (product == null)
@@ -53,8 +55,8 @@ namespace OrderManagement.Controllers
             return CreatedAtAction(nameof(GetAllProducts), new { id = product.ProductId }, product);
         }
 
-        // Update product stock
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public ActionResult<Product> UpdateProductStock(int id, [FromBody] Product product)
         {
             var existingProduct = _context.Products.Find(id);
@@ -65,6 +67,20 @@ namespace OrderManagement.Controllers
             _context.SaveChanges();
 
             return Ok(existingProduct);
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public ActionResult DeleteProduct(int id)
+        {
+            var product = _context.Products.Find(id);
+            if (product == null)
+                return NotFound();
+
+            _context.Products.Remove(product);
+            _context.SaveChanges();
+
+            return NoContent();
         }
 
         // Get orders for a specific product

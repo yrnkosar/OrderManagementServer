@@ -7,17 +7,14 @@ public partial class Customer
 {
     public int CustomerId { get; set; }
 
-    public string CustomerName { get; set; } = null!;
-
+    public string CustomerName { get; set; } 
+    public string CustomerPassword{ get; set; } 
     public decimal Budget { get; set; }
 
-    public string CustomerType { get; set; } = null!;
+    public string CustomerType { get; set; } 
 
     public decimal? TotalSpent { get; set; }
 
-    public virtual ICollection<Log> Logs { get; set; } = new List<Log>();
 
-    public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
-
-    public int WaitTimeInSeconds { get; set; }  // Bu özelliği ekleyin
+   public string photo { get; set; } = null!;
 }

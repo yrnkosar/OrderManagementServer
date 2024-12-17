@@ -16,7 +16,6 @@ namespace OrderManagement.Services
 
         public async Task<IEnumerable<Customer>> GetAllCustomersAsync()
         {
-            var customers = await _customerRepository.GetAllAsync();
             return await _customerRepository.GetAllAsync();
         }
 
@@ -42,15 +41,8 @@ namespace OrderManagement.Services
 
         public async Task<IEnumerable<Customer>> GetPremiumCustomersAsync()
         {
-            return await _customerRepository.GetPremiumCustomersAsync();
-        }
-
-        private int CalculatePriorityScore(Customer customer)
-        {
-            int basePriorityScore = customer.CustomerType == "Premium" ? 15 : 10;
-            double waitTimeWeight = 0.5; // Bekleme süresi ağırlığı
-                                         // Bekleme süresi burada varsayalım ki müşteri objesinde mevcut
-            return (int)(basePriorityScore + (customer.WaitTimeInSeconds * waitTimeWeight)); // Açık dönüşüm
+            // Eğer Premium müşterileri filtrelemek istersen
+            return await _customerRepository.GetAllAsync(); // Burada filtreleme yapılabilir.
         }
     }
 }

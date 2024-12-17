@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using OrderManagement.Configurations;
 using OrderManagement.Data;
 using OrderManagement.Repositories;
 using OrderManagement.Services;
@@ -17,19 +18,22 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<OrderManagementContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+
 // Repositoryleri ekleyelim
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 
+
 // Servisleri ekleyelim
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
-
+builder.Services.AddScoped<LoginService>();
 // Diðer servisler ve middleware'ler (e.g., authentication, authorization vb.)
 
 var app = builder.Build();
+// Seed verileri ekleyin
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

@@ -1,10 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OrderManagement.Models;
-using OrderManagement.Data;
-using System.Linq;
-using System;
-using System.Collections.Generic;
 using OrderManagement.Services;
+using System.Threading.Tasks;
 
 namespace OrderManagement.Controllers
 {
@@ -13,12 +10,7 @@ namespace OrderManagement.Controllers
     public class CustomerController : ControllerBase
     {
         private readonly ICustomerService _customerService;
-        private readonly OrderManagementContext _context;
 
-        public CustomerController(OrderManagementContext context)
-        {
-            _context = context;
-        }
         public CustomerController(ICustomerService customerService)
         {
             _customerService = customerService;
@@ -31,7 +23,7 @@ namespace OrderManagement.Controllers
             return Ok(customers);
         }
 
-      [HttpGet("{id}")]
+        [HttpGet("{id}")]
         public async Task<IActionResult> GetCustomerById(int id)
         {
             var customer = await _customerService.GetCustomerByIdAsync(id);

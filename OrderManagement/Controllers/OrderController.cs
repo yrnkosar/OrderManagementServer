@@ -1,8 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OrderManagement.Models;
-using OrderManagement.Data;
+
 using System.Linq;
 using System;
+using OrderManagement.Data;
 
 namespace OrderManagement.Controllers
 {
