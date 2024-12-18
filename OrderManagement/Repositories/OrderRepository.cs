@@ -1,5 +1,4 @@
-﻿
-using OrderManagement.Models;
+﻿using OrderManagement.Models;
 using Microsoft.EntityFrameworkCore;
 using OrderManagement.Data;
 
