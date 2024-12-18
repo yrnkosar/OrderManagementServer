@@ -1,5 +1,5 @@
-﻿using OrderManagement.Repositories;
-using OrderManagement.Models;
+﻿using OrderManagement.Models;
+using OrderManagement.Repositories;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 

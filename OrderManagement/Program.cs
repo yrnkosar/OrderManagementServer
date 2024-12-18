@@ -46,7 +46,8 @@ public class Program
         builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
         builder.Services.AddScoped<ICustomerService, CustomerService>();
         builder.Services.AddScoped<LoginService>();
-
+        builder.Services.AddScoped<IProductService, ProductService>();
+        builder.Services.AddScoped<IProductRepository, ProductRepository>();
         // Swagger UI için JWT Authorization ekleyelim
         builder.Services.AddSwaggerGen(c =>
         {

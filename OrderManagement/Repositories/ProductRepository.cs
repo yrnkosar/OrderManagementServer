@@ -1,7 +1,8 @@
-﻿
+﻿using Microsoft.EntityFrameworkCore;
 using OrderManagement.Models;
-using Microsoft.EntityFrameworkCore;
 using OrderManagement.Data;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace OrderManagement.Repositories
 {
