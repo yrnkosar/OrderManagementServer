@@ -64,6 +64,34 @@ namespace OrderManagement.Controllers
 
             return Ok(product);
         }
+        [HttpPatch("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateProductPartial(int id, [FromBody] Product updatedFields)
+        {
+            var existingProduct = await _productService.GetProductByIdAsync(id);
+            if (existingProduct == null)
+                return NotFound("Ürün bulunamadı.");
+
+            // Sadece gönderilen alanları güncelle
+            if (!string.IsNullOrEmpty(updatedFields.ProductName))
+                existingProduct.ProductName = updatedFields.ProductName;
+
+            if (updatedFields.Stock >= 0) // Stok negatif olamaz
+                existingProduct.Stock = updatedFields.Stock;
+
+            if (updatedFields.Price > 0) // Fiyat sıfırdan büyük olmalı
+                existingProduct.Price = updatedFields.Price;
+
+            if (!string.IsNullOrEmpty(updatedFields.Description))
+                existingProduct.Description = updatedFields.Description;
+
+            if (!string.IsNullOrEmpty(updatedFields.Photo))
+                existingProduct.Photo = updatedFields.Photo;
+
+            await _productService.UpdateProductAsync(existingProduct);
+            return Ok(existingProduct);
+        }
+
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
