@@ -29,7 +29,8 @@ namespace OrderManagement.Controllers
             var claims = new List<Claim>
     {
         new Claim(ClaimTypes.Name, customer.CustomerName),
-        new Claim(ClaimTypes.Role, customer.CustomerType)
+        new Claim(ClaimTypes.Role, customer.CustomerType),
+        new Claim("CustomerId", customer.CustomerId.ToString()) // Kullanıcı ID'sini claim olarak ekledik
     };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("your-secret-key-should-be-at-least-16-characters-long"));
@@ -45,7 +46,8 @@ namespace OrderManagement.Controllers
 
             return Ok(new
             {
-                Token = new JwtSecurityTokenHandler().WriteToken(token)
+                Token = new JwtSecurityTokenHandler().WriteToken(token),
+                CustomerId = customer.CustomerId // Token ile birlikte ID'yi döndürüyoruz
             });
         }
 
