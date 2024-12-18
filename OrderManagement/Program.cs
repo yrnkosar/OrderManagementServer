@@ -15,7 +15,16 @@ public class Program
 
         // Add services to the container.
         builder.Services.AddControllers();
-
+        // CORS Politikasý Tanýmý
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowAll", builder =>
+            {
+                builder.AllowAnyOrigin()
+                       .AllowAnyMethod()
+                       .AllowAnyHeader();
+            });
+        });
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
@@ -84,7 +93,8 @@ public class Program
             app.UseSwagger();
             app.UseSwaggerUI();
         }
-
+        // CORS Middleware'i Ekle
+        app.UseCors("AllowAll");
         // Authentication ve Authorization middleware'lerini ekleyelim
         app.UseAuthentication();
         app.UseAuthorization();
