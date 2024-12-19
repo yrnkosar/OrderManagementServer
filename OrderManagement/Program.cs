@@ -50,13 +50,19 @@ public class Program
         // DbContext ve diðer servisleri ekleyelim
         builder.Services.AddDbContext<OrderManagementContext>(options =>
             options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
+        builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
         // Repositories ve Services'i DI'ye ekleyelim
+
         builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
         builder.Services.AddScoped<ICustomerService, CustomerService>();
         builder.Services.AddScoped<LoginService>();
         builder.Services.AddScoped<IProductService, ProductService>();
         builder.Services.AddScoped<IProductRepository, ProductRepository>();
+        builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+        builder.Services.AddScoped<IOrderService, OrderService>();
+        builder.Services.AddScoped<IUserService, UserService>();
+        builder.Services.AddScoped<ILogService, LogService>(); // LogService kaydý
+        builder.Services.AddScoped<ILogRepository, LogRepository>(); // LogRepository kaydý
         // Swagger UI için JWT Authorization ekleyelim
         builder.Services.AddSwaggerGen(c =>
         {

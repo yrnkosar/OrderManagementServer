@@ -1,6 +1,6 @@
 ﻿using OrderManagement.Models;
 using OrderManagement.Repositories;
-using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace OrderManagement.Services
@@ -8,10 +8,12 @@ namespace OrderManagement.Services
     public class CustomerService : ICustomerService
     {
         private readonly ICustomerRepository _customerRepository;
+        private readonly IUserService _userService;
 
-        public CustomerService(ICustomerRepository customerRepository)
+        public CustomerService(ICustomerRepository customerRepository, IUserService userService)
         {
             _customerRepository = customerRepository;
+            _userService = userService;
         }
 
         public async Task<IEnumerable<Customer>> GetAllCustomersAsync()
@@ -39,10 +41,17 @@ namespace OrderManagement.Services
             await _customerRepository.DeleteAsync(id);
         }
 
-        public async Task<IEnumerable<Customer>> GetPremiumCustomersAsync()
+        public async Task<Customer> GetCurrentCustomerAsync(ClaimsPrincipal user)
         {
-            // Eğer Premium müşterileri filtrelemek istersen
-            return await _customerRepository.GetAllAsync(); // Burada filtreleme yapılabilir.
+            // Kullanıcı kimliğini alıyoruz
+            var userId = await _userService.GetCurrentUserIdAsync(user);
+            if (userId == null)
+                return null; // Geçersiz kullanıcı kimliği
+
+            // Kullanıcı kimliği ile müşteri bilgilerini alıyoruz
+            return await _customerRepository.GetByIdAsync(int.Parse(userId));
         }
+
+
     }
 }

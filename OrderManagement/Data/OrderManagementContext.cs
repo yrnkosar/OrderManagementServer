@@ -23,39 +23,39 @@ namespace OrderManagement.Data
         {
             if (!optionsBuilder.IsConfigured)
             {
-                optionsBuilder.UseSqlServer("Data Source=YAREN-DESKTOP\\SQLEXPRESS;Initial Catalog=OrderManagement;Integrated Security=True"); // Baðlantý dizesini buraya ekleyin.
+                optionsBuilder.UseSqlServer("Data Source=PC_TUÐBA;Initial Catalog=OrderManagement;Integrated Security=True"); // Baðlantý dizesini buraya ekleyin.
             }
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Customer - Order iliþkisi
+            // Customer - Order iliþkisi: Müþteri silindiðinde sipariþler de silinir (Cascade)
             modelBuilder.Entity<Order>()
                 .HasOne(o => o.Customer)
-                .WithMany()
-                .HasForeignKey(o => o.CustomerId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .WithMany()  // Müþteriye baðlý birden fazla sipariþ olabilir.
+                .HasForeignKey(o => o.CustomerId) // Foreign key'i belirtelim.
+                .OnDelete(DeleteBehavior.Cascade); // Müþteri silindiðinde sipariþler de silinir.
 
-            // Order - Product iliþkisi
-            modelBuilder.Entity<Order>()
-                .HasOne(o => o.Product)
-                .WithMany()
-                .HasForeignKey(o => o.ProductId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            // Log - Customer iliþkisi
+            // Customer - Log iliþkisi: Müþteri silindiðinde loglar da silinir (Cascade)
             modelBuilder.Entity<Log>()
                 .HasOne(l => l.Customer)
-                .WithMany()
-                .HasForeignKey(l => l.CustomerId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .WithMany()  // Müþteriye baðlý birden fazla log olabilir.
+                .HasForeignKey(l => l.CustomerId) // Foreign key'i belirtelim.
+                .OnDelete(DeleteBehavior.Cascade); // Müþteri silindiðinde loglar da silinir.
 
-            // Log - Order iliþkisi
+            // Order - Product iliþkisi: Ürün silinmeye çalýþýldýðýnda, sipariþler kýsýtlanýr (Restrict)
+            modelBuilder.Entity<Order>()
+                .HasOne(o => o.Product)
+                .WithMany()  // Ürüne baðlý birden fazla sipariþ olabilir.
+                .HasForeignKey(o => o.ProductId) // Foreign key'i belirtelim.
+                .OnDelete(DeleteBehavior.Restrict); // Ürün silinmeden önce sipariþler kaldýrýlmalý.
+
+            // Log - Order iliþkisi: Sipariþ silindiðinde loglar silinmez, silme kýsýtlanýr (Restrict)
             modelBuilder.Entity<Log>()
                 .HasOne(l => l.Order)
-                .WithMany()
-                .HasForeignKey(l => l.OrderId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .WithMany()  // Sipariþe baðlý birden fazla log olabilir.
+                .HasForeignKey(l => l.OrderId) // Foreign key'i belirtelim.
+                .OnDelete(DeleteBehavior.Restrict); // Sipariþ silindiðinde loglar silinmez.
 
             OnModelCreatingPartial(modelBuilder);
         }
