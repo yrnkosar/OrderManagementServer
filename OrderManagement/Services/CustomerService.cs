@@ -28,6 +28,7 @@ namespace OrderManagement.Services
 
         public async Task CreateCustomerAsync(Customer customer)
         {
+            customer.TotalSpent = 0; // TotalSpent başlatılıyor.
             await _customerRepository.AddAsync(customer);
         }
 

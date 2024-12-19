@@ -53,12 +53,20 @@ namespace OrderManagement.Services
             if (customer == null)
                 return null; // Müşteri bulunamadı
 
+            // Müşterinin aynı üründen toplam sipariş miktarını kontrol ediyoruz
+            var customerOrders = await _orderRepository.GetAllAsync();
+            var totalProductOrders = customerOrders
+                .Where(o => o.CustomerId == customerId && o.ProductId == order.ProductId && o.OrderStatus != "Cancelled")
+                .Sum(o => o.Quantity);
+
+            if (totalProductOrders + order.Quantity > 5)
+                return null; // Aynı üründen toplamda 5'i aşan siparişe izin verme
+
             order.TotalPrice = order.Quantity * (await GetProductPriceAsync(order.ProductId));
 
-            await _orderRepository.AddAsync(order);  // Siparişi veri tabanına ekle
+            await _orderRepository.AddAsync(order); // Siparişi veri tabanına ekle
             return order;
         }
-
         public async Task ApproveAllOrdersAsync()
         {
             // Mutex kullanarak işlemi eş zamanlı hale getiriyoruz
@@ -89,21 +97,36 @@ namespace OrderManagement.Services
                 {
                     var customer = await _customerRepository.GetByIdAsync(order.CustomerId);
                     var product = await _productRepository.GetByIdAsync(order.ProductId);
-                    if (customer.Budget >= order.TotalPrice && product.Stock >= order.Quantity)
+                    List<string> failureReasons = new List<string>();
+
+                    // Kontroller
+                    if (customer.Budget < order.TotalPrice)
                     {
-                        // Müşteri bütçesini güncelle
+                        failureReasons.Add("Müşteri bakiyesi yetersiz");
+                    }
+
+                    if (product.Stock < order.Quantity)
+                    {
+                        failureReasons.Add("Ürün stoğu yetersiz");
+                    }
+
+                    if (!failureReasons.Any())
+                    {
+                        // Sipariş başarılıysa işlemleri gerçekleştir
                         customer.Budget -= order.TotalPrice;
                         customer.TotalSpent += order.TotalPrice;
-                        // Ürün stoğunu güncelle
                         product.Stock -= order.Quantity;
-                        // Sipariş durumunu "Completed" olarak güncelle
                         order.OrderStatus = "Completed";
-
+                     
                         await _orderRepository.UpdateAsync(order);
                         await _customerRepository.UpdateAsync(customer);
                         await _productRepository.UpdateAsync(product);
+                        if (customer.TotalSpent > 2000 && customer.CustomerType != "Premium")
+                        {
+                            customer.CustomerType = "Premium";
+                        }
 
-                        // Log kaydını oluştur
+                        // Başarılı işlem logu
                         await _logService.LogOrderAsync(new Log
                         {
                             CustomerId = order.CustomerId,
@@ -114,23 +137,23 @@ namespace OrderManagement.Services
                             CustomerType = customer.CustomerType,
                             ProductName = product?.ProductName ?? "Unknown",
                             Quantity = order.Quantity,
-                            Result = "Success"
+                            Result = "Satın alma başarılı"
                         });
                     }
                     else
                     {
-                        // Sipariş onaylanamadı
+                        // Sipariş başarısızsa durumu kaydet
                         order.OrderStatus = "Cancelled";
                         await _orderRepository.UpdateAsync(order);
 
-                        // Log kaydını oluştur
+                        // Hata logu
                         await _logService.LogOrderAsync(new Log
                         {
                             CustomerId = order.CustomerId,
                             OrderId = order.OrderId,
                             LogDate = DateTime.Now,
                             LogType = "Hata",
-                            LogDetails = $"Order {order.OrderId} onaylanamadı. Müşteri bütçesi veya ürün stoğu yetersiz.",
+                            LogDetails = $"Order {order.OrderId} onaylanamadı. Sebep: {string.Join(", ", failureReasons)}.",
                             CustomerType = customer?.CustomerType ?? "Unknown",
                             ProductName = product?.ProductName ?? "Unknown",
                             Quantity = order.Quantity,

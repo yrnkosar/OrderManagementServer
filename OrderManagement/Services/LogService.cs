@@ -16,7 +16,7 @@ namespace OrderManagement.Services
         {
             await _logRepository.AddAsync(log);
         }
-        public async Task LogOrderCreatedAsync(Order order)
+      /*  public async Task LogOrderCreatedAsync(Order order)
         {
             var log = new Log
             {
@@ -28,7 +28,7 @@ namespace OrderManagement.Services
             };
             await _logRepository.AddAsync(log);
         }
-
+      */
         public async Task<IEnumerable<Log>> GetLogsAsync()
         {
             return await _logRepository.GetAllAsync();
