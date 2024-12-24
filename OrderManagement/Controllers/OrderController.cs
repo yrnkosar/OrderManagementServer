@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using OrderManagement.DTOs;
 using System;
 using System.Security.Claims;
+using Microsoft.Data.SqlClient;
 
 namespace OrderManagement.Controllers
 {
@@ -28,6 +29,9 @@ namespace OrderManagement.Controllers
         [HttpPost("place-order")]
         public async Task<IActionResult> PlaceOrder([FromBody] OrderDTO orderDTO)
         {
+            Console.WriteLine("OrderDTO içeriği:");
+            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(orderDTO));
+
             if (orderDTO == null || orderDTO.Quantity <= 0)
                 return BadRequest("Geçersiz sipariş bilgisi");
 
@@ -66,6 +70,11 @@ namespace OrderManagement.Controllers
                 await _orderService.ApproveAllOrdersAsync();
 
                 return Ok("Tüm siparişler başarıyla onaylandı.");
+            }
+            catch (SqlException sqlEx)
+            {
+                Console.WriteLine($"SQL Hatası: {sqlEx.Message}");
+                return StatusCode(500, $"SQL Hatası: {sqlEx.Message}");
             }
             catch (Exception ex)
             {

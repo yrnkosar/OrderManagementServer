@@ -96,17 +96,7 @@ namespace OrderManagement.Repositories
             }
         }
 
-        public async Task<bool> ApproveOrderAsync(int orderId)
-        {
-            var order = await _context.Orders.FindAsync(orderId);
-            if (order != null)
-            {
-                order.OrderStatus = "Approved"; // Sipariş onaylandı.
-                await _context.SaveChangesAsync();
-                return true;
-            }
-            return false;
-        }
+       
     }
 }
 

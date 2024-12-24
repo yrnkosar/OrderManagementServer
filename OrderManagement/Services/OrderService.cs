@@ -59,8 +59,8 @@ namespace OrderManagement.Services
                 .Where(o => o.CustomerId == customerId && o.ProductId == order.ProductId && o.OrderStatus != "Cancelled")
                 .Sum(o => o.Quantity);
 
-            if (totalProductOrders + order.Quantity > 5)
-                return null; // Aynı üründen toplamda 5'i aşan siparişe izin verme
+            //if (totalProductOrders + order.Quantity > 5)
+                //return null; // Aynı üründen toplamda 5'i aşan siparişe izin verme
 
             order.TotalPrice = order.Quantity * (await GetProductPriceAsync(order.ProductId));
 
@@ -117,28 +117,31 @@ namespace OrderManagement.Services
                         customer.TotalSpent += order.TotalPrice;
                         product.Stock -= order.Quantity;
                         order.OrderStatus = "Completed";
-                     
-                        await _orderRepository.UpdateAsync(order);
+
                         await _customerRepository.UpdateAsync(customer);
+                        await _orderRepository.UpdateAsync(order);
                         await _productRepository.UpdateAsync(product);
                         if (customer.TotalSpent > 2000 && customer.CustomerType != "Premium")
                         {
                             customer.CustomerType = "Premium";
                         }
-
                         // Başarılı işlem logu
-                        await _logService.LogOrderAsync(new Log
+                        Console.WriteLine("tugba"+order.Customer.CustomerId);
+                        if (customer != null && product != null)
                         {
-                            CustomerId = order.CustomerId,
-                            OrderId = order.OrderId,
-                            LogDate = DateTime.Now,
-                            LogType = "Bilgilendirme",
-                            LogDetails = $"Order {order.OrderId} başarıyla onaylandı ve işleme alındı.",
-                            CustomerType = customer.CustomerType,
-                            ProductName = product?.ProductName ?? "Unknown",
-                            Quantity = order.Quantity,
-                            Result = "Satın alma başarılı"
-                        });
+                            await _logService.LogOrderAsync(new Log
+                            {
+                                CustomerId = customer.CustomerId, // Müşteri kaydını doğru şekilde al
+                                OrderId = order.OrderId,
+                                LogDate = DateTime.Now,
+                                LogType = "Bilgilendirme",
+                                LogDetails = $"Order {order.OrderId} başarıyla onaylandı.",
+                                CustomerType = customer.CustomerType,
+                                ProductName = product.ProductName,
+                                Quantity = order.Quantity,
+                                Result = "Başarılı"
+                            });
+                        }
                     }
                     else
                     {
