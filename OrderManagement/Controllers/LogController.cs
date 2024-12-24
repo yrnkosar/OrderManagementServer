@@ -1,12 +1,16 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OrderManagement.Models;
 using OrderManagement.Services;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace OrderManagement.Controllers
 {
-    [Authorize]
-    public class LogController : Controller
+    [Route("api/[controller]")]
+    [ApiController]
+    [Authorize(Roles = "Admin")]
+    public class LogController : ControllerBase
     {
         private readonly ILogService _logService;
 
@@ -16,17 +20,16 @@ namespace OrderManagement.Controllers
             _logService = logService;
         }
 
-        public IActionResult Index()
-        {
-            return View();
-        }
-
+        // GET api/log
         [HttpGet]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetLogs()
+        public async Task<ActionResult<IEnumerable<Log>>> GetLogs()
         {
             var logs = await _logService.GetLogsAsync();
-            return Ok(logs);
+            if (logs == null)
+            {
+                return NotFound();
+            }
+            return Ok(logs);  // Swagger üzerinden erişilebilir
         }
     }
 }
