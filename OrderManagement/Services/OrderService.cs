@@ -1,4 +1,6 @@
-﻿using OrderManagement.Models;
+﻿using Microsoft.AspNetCore.SignalR;
+using OrderManagement.Hubs;
+using OrderManagement.Models;
 using OrderManagement.Repositories;
 using System;
 using System.Collections.Generic;
@@ -6,6 +8,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
+using OrderManagement.Hubs;
 
 namespace OrderManagement.Services
 {
@@ -18,8 +21,8 @@ namespace OrderManagement.Services
         private readonly IUserService _userService;
         private readonly ILogService _logService; // Burada _logService'i ekliyoruz
         private static readonly Mutex _mutex = new Mutex(); // Mutex nesnesi
-
-        public OrderService(IOrderRepository orderRepository, ICustomerRepository customerRepository, IProductRepository productRepository, ICustomerService customerService, IUserService userService, ILogService logService)
+        private readonly IHubContext<OrderHub> _hubContext; // SignalR hub context
+        public OrderService(IOrderRepository orderRepository, ICustomerRepository customerRepository, IProductRepository productRepository, ICustomerService customerService, IUserService userService, ILogService logService, IHubContext<OrderHub> hubContext)
         {
             _orderRepository = orderRepository;
             _customerRepository = customerRepository;
@@ -27,6 +30,7 @@ namespace OrderManagement.Services
             _customerService = customerService;
             _userService = userService;
             _logService = logService; // Constructor'da _logService'i başlatıyoruz
+            _hubContext = hubContext;
         }
 
         public async Task<IEnumerable<Order>> GetAllOrdersAsync()
@@ -73,7 +77,6 @@ namespace OrderManagement.Services
 
             try
             {
-                // Mutex kullanarak işlemi eş zamanlı hale getiriyoruz
                 _mutex.WaitOne(); // Mutex kilidi alınır
                 mutexAcquired = true;
 
@@ -93,7 +96,7 @@ namespace OrderManagement.Services
                         PriorityScore = CalculatePriorityScore(customerList[index], order.OrderDate.GetValueOrDefault(DateTime.MinValue))
                     })
                     .OrderBy(order => order.PriorityScore)
-                    .Select(order => order.Order) // Sadece order'ları seçiyoruz
+                    .Select(order => order.Order)
                     .ToList();
 
                 foreach (var order in sortedOrders)
@@ -102,7 +105,7 @@ namespace OrderManagement.Services
                     var product = await _productRepository.GetByIdAsync(order.ProductId);
                     List<string> failureReasons = new List<string>();
 
-                    // Kontroller
+                    // Sipariş kontrolü ve işleme
                     if (customer.Budget < order.TotalPrice)
                     {
                         failureReasons.Add("Müşteri bakiyesi yetersiz");
@@ -124,32 +127,26 @@ namespace OrderManagement.Services
                         await _customerRepository.UpdateAsync(customer);
                         await _orderRepository.UpdateAsync(order);
                         await _productRepository.UpdateAsync(product);
-                        if (customer.TotalSpent > 2000 && customer.CustomerType != "Premium")
-                        {
-                            customer.CustomerType = "Premium";
-                        }
 
-                        // Başarılı işlem logu
-                        Console.WriteLine("tugba" + order.Customer.CustomerId);
-                        if (customer != null && product != null)
+                        // Başarılı log kaydı
+                        await _logService.LogOrderAsync(new Log
                         {
-                            await _logService.LogOrderAsync(new Log
-                            {
-                                CustomerId = customer.CustomerId, // Müşteri kaydını doğru şekilde al
-                                OrderId = order.OrderId,
-                                LogDate = DateTime.Now,
-                                LogType = "Bilgilendirme",
-                                LogDetails = $"Order {order.OrderId} başarıyla onaylandı.",
-                                CustomerType = customer.CustomerType,
-                                ProductName = product.ProductName,
-                                Quantity = order.Quantity,
-                                Result = "Başarılı"
-                            });
-                        }
+                            CustomerId = customer.CustomerId,
+                            OrderId = order.OrderId,
+                            LogDate = DateTime.Now,
+                            LogType = "Bilgilendirme",
+                            LogDetails = $"Order {order.OrderId} başarıyla onaylandı.",
+                            CustomerType = customer.CustomerType,
+                            ProductName = product.ProductName,
+                            Quantity = order.Quantity,
+                            Result = "Başarılı"
+                        });
+
+                        // SignalR ile siparişin onaylandığını admin'e bildir
+                        await _hubContext.Clients.All.SendAsync("ReceiveOrderStatusUpdate", order.OrderId, "Onaylandı", false);
                     }
                     else
                     {
-                        // Sipariş başarısızsa durumu kaydet
                         order.OrderStatus = "Cancelled";
                         await _orderRepository.UpdateAsync(order);
 
@@ -166,24 +163,23 @@ namespace OrderManagement.Services
                             Quantity = order.Quantity,
                             Result = "Failed"
                         });
+
+                        // SignalR ile siparişin iptal edildiğini admin'e bildir
+                        await _hubContext.Clients.All.SendAsync("ReceiveOrderStatusUpdate", order.OrderId, "İptal Edildi", false);
                     }
                 }
             }
             catch (Exception ex)
             {
-                // Hata durumunda kilidi serbest bırak
                 if (mutexAcquired)
                 {
                     _mutex.ReleaseMutex();
                 }
-
-                // Hata loglama
                 Console.WriteLine($"Hata: {ex.Message}");
                 throw;
             }
             finally
             {
-                // Mutex'i burada serbest bırakıyoruz, yalnızca mutex alınmışsa
                 if (mutexAcquired)
                 {
                     _mutex.ReleaseMutex();
@@ -191,15 +187,16 @@ namespace OrderManagement.Services
             }
         }
 
-
-
         /*     public async Task ApproveAllOrdersAsync()
              {
-                 // Mutex kullanarak işlemi eş zamanlı hale getiriyoruz
-                 _mutex.WaitOne(); // Mutex kilidi alınır
+                 bool mutexAcquired = false;
 
                  try
                  {
+                     // Mutex kullanarak işlemi eş zamanlı hale getiriyoruz
+                     _mutex.WaitOne(); // Mutex kilidi alınır
+                     mutexAcquired = true;
+
                      // Tüm pending (onaylanmamış) siparişleri alıyoruz
                      var allOrders = await _orderRepository.GetAllAsync();
                      var pendingOrders = allOrders.Where(order => order.OrderStatus == "Pending").ToList();
@@ -251,8 +248,9 @@ namespace OrderManagement.Services
                              {
                                  customer.CustomerType = "Premium";
                              }
+
                              // Başarılı işlem logu
-                             Console.WriteLine("tugba"+order.Customer.CustomerId);
+                             Console.WriteLine("tugba" + order.Customer.CustomerId);
                              if (customer != null && product != null)
                              {
                                  await _logService.LogOrderAsync(new Log
@@ -291,9 +289,25 @@ namespace OrderManagement.Services
                          }
                      }
                  }
+                 catch (Exception ex)
+                 {
+                     // Hata durumunda kilidi serbest bırak
+                     if (mutexAcquired)
+                     {
+                         _mutex.ReleaseMutex();
+                     }
+
+                     // Hata loglama
+                     Console.WriteLine($"Hata: {ex.Message}");
+                     throw;
+                 }
                  finally
                  {
-                     _mutex.ReleaseMutex(); // Mutex serbest bırakılır
+                     // Mutex'i burada serbest bırakıyoruz, yalnızca mutex alınmışsa
+                     if (mutexAcquired)
+                     {
+                         _mutex.ReleaseMutex();
+                     }
                  }
              }*/
         public async Task<IEnumerable<Order>> GetPendingOrdersAsync()

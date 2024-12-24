@@ -25,6 +25,17 @@ namespace OrderManagement.Controllers
             _userService = userService;
             _logService = logService; // Log servisi bağlandı
         }
+        [HttpGet("all-orders")]
+        [Authorize(Roles = "Admin")]  // Sadece adminler bu endpoint'e erişebilir
+        public async Task<ActionResult<IEnumerable<Order>>> GetAllOrders()
+        {
+            var allOrders = await _orderService.GetAllOrdersAsync();
+
+            if (allOrders == null || !allOrders.Any())
+                return NotFound("Hiç sipariş bulunamadı.");
+
+            return Ok(allOrders);
+        }
 
         [HttpPost("place-order")]
         public async Task<IActionResult> PlaceOrder([FromBody] OrderDTO orderDTO)

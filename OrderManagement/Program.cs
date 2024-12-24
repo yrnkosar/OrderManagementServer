@@ -5,6 +5,7 @@ using Microsoft.OpenApi.Models;
 using OrderManagement.Data;
 using OrderManagement.Repositories;
 using OrderManagement.Services;
+using Microsoft.AspNetCore.SignalR;
 using System.Text;
 
 public class Program
@@ -15,7 +16,8 @@ public class Program
 
         // Add services to the container.
         builder.Services.AddControllers();
-        // CORS Politikasý Tanýmý
+
+        // CORS Policy Definition
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowAll", builder =>
@@ -25,6 +27,8 @@ public class Program
                        .AllowAnyHeader();
             });
         });
+
+        // JWT Authentication
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
@@ -41,18 +45,19 @@ public class Program
                 };
             });
 
+        // Authorization Policy for Admin role
         builder.Services.AddAuthorization(options =>
         {
             options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
         });
 
-
-        // DbContext ve diðer servisleri ekleyelim
+        // DbContext and other services
         builder.Services.AddDbContext<OrderManagementContext>(options =>
             options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-        builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-        // Repositories ve Services'i DI'ye ekleyelim
 
+        builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+
+        // Register Repositories and Services
         builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
         builder.Services.AddScoped<ICustomerService, CustomerService>();
         builder.Services.AddScoped<LoginService>();
@@ -61,9 +66,13 @@ public class Program
         builder.Services.AddScoped<IOrderRepository, OrderRepository>();
         builder.Services.AddScoped<IOrderService, OrderService>();
         builder.Services.AddScoped<IUserService, UserService>();
-        builder.Services.AddScoped<ILogService, LogService>(); // LogService kaydý
-        builder.Services.AddScoped<ILogRepository, LogRepository>(); // LogRepository kaydý
-        // Swagger UI için JWT Authorization ekleyelim
+        builder.Services.AddScoped<ILogService, LogService>(); // LogService Registration
+        builder.Services.AddScoped<ILogRepository, LogRepository>(); // LogRepository Registration
+
+        // Add SignalR
+        builder.Services.AddSignalR();  // SignalR servisini ekleyin
+
+        // Swagger UI for JWT Authorization
         builder.Services.AddSwaggerGen(c =>
         {
             c.SwaggerDoc("v1", new OpenApiInfo { Title = "Order Management API", Version = "v1" });
@@ -74,7 +83,7 @@ public class Program
                 Type = SecuritySchemeType.ApiKey,
                 Scheme = "Bearer",
                 BearerFormat = "JWT",
-                Description = "Please enter JWT with Bearer into field"
+                Description = "Please enter JWT with Bearer into the field"
             });
             c.AddSecurityRequirement(new OpenApiSecurityRequirement
             {
@@ -94,23 +103,27 @@ public class Program
 
         var app = builder.Build();
 
-        // Swagger'ý yalnýzca geliþtirme ortamýnda çalýþtýralým
+        // Swagger should only be available in development environment
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
             app.UseSwaggerUI();
         }
-        // CORS Middleware'i Ekle
+
+        // CORS Middleware
         app.UseCors("AllowAll");
-        // Authentication ve Authorization middleware'lerini ekleyelim
+
+        // Authentication and Authorization Middleware
         app.UseAuthentication();
         app.UseAuthorization();
 
-        // Diðer middleware'ler
+        // Other middleware
         app.UseHttpsRedirection();
 
+        // Map controllers
         app.MapControllers();
 
+        // Run the application
         app.Run();
     }
 }
