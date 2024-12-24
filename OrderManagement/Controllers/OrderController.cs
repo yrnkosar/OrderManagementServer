@@ -87,12 +87,7 @@ namespace OrderManagement.Controllers
                 Console.WriteLine($"SQL Hatası: {sqlEx.Message}");
                 return StatusCode(500, $"SQL Hatası: {sqlEx.Message}");
             }
-            catch (Exception ex)
-            {
-        
-
-                return StatusCode(500, "Bir hata oluştu. Lütfen tekrar deneyin.");
-            }
+      
         }
 
         [HttpGet("pending-orders")]
