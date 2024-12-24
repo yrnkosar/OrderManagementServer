@@ -63,7 +63,7 @@ namespace OrderManagement.Controllers
         [HttpPost("approve-all-orders")]
         [Authorize(Roles = "Admin")]  // Sadece adminlerin onaylama yetkisi olsun
         public async Task<IActionResult> ApproveAllOrders()
-        {
+        { 
             try
             {
                 // Tüm siparişleri onaylama işlemi
@@ -78,15 +78,7 @@ namespace OrderManagement.Controllers
             }
             catch (Exception ex)
             {
-                // Hata durumunda log tutma
-                await _logService.LogOrderAsync(new Log
-                {
-                    CustomerId = -1, // Belirli bir müşteri olmadığından -1 kullandık
-                    OrderId = 0,
-                    LogDate = DateTime.Now,
-                    LogType = "Hata",
-                    LogDetails = $"Tüm siparişlerin onaylanmasında bir hata oluştu: {ex.Message}"
-                });
+        
 
                 return StatusCode(500, "Bir hata oluştu. Lütfen tekrar deneyin.");
             }

@@ -69,11 +69,14 @@ namespace OrderManagement.Services
         }
         public async Task ApproveAllOrdersAsync()
         {
-            // Mutex kullanarak işlemi eş zamanlı hale getiriyoruz
-            _mutex.WaitOne(); // Mutex kilidi alınır
+            bool mutexAcquired = false;
 
             try
             {
+                // Mutex kullanarak işlemi eş zamanlı hale getiriyoruz
+                _mutex.WaitOne(); // Mutex kilidi alınır
+                mutexAcquired = true;
+
                 // Tüm pending (onaylanmamış) siparişleri alıyoruz
                 var allOrders = await _orderRepository.GetAllAsync();
                 var pendingOrders = allOrders.Where(order => order.OrderStatus == "Pending").ToList();
@@ -125,8 +128,9 @@ namespace OrderManagement.Services
                         {
                             customer.CustomerType = "Premium";
                         }
+
                         // Başarılı işlem logu
-                        Console.WriteLine("tugba"+order.Customer.CustomerId);
+                        Console.WriteLine("tugba" + order.Customer.CustomerId);
                         if (customer != null && product != null)
                         {
                             await _logService.LogOrderAsync(new Log
@@ -165,11 +169,133 @@ namespace OrderManagement.Services
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                // Hata durumunda kilidi serbest bırak
+                if (mutexAcquired)
+                {
+                    _mutex.ReleaseMutex();
+                }
+
+                // Hata loglama
+                Console.WriteLine($"Hata: {ex.Message}");
+                throw;
+            }
             finally
             {
-                _mutex.ReleaseMutex(); // Mutex serbest bırakılır
+                // Mutex'i burada serbest bırakıyoruz, yalnızca mutex alınmışsa
+                if (mutexAcquired)
+                {
+                    _mutex.ReleaseMutex();
+                }
             }
         }
+
+
+
+        /*     public async Task ApproveAllOrdersAsync()
+             {
+                 // Mutex kullanarak işlemi eş zamanlı hale getiriyoruz
+                 _mutex.WaitOne(); // Mutex kilidi alınır
+
+                 try
+                 {
+                     // Tüm pending (onaylanmamış) siparişleri alıyoruz
+                     var allOrders = await _orderRepository.GetAllAsync();
+                     var pendingOrders = allOrders.Where(order => order.OrderStatus == "Pending").ToList();
+
+                     // Asenkron işlemleri sırasıyla alıyoruz
+                     var customerTasks = pendingOrders.Select(order => _customerRepository.GetByIdAsync(order.CustomerId)).ToList();
+                     var customerList = await Task.WhenAll(customerTasks);
+
+                     // Siparişleri öncelik skora göre sıralıyoruz
+                     var sortedOrders = pendingOrders
+                         .Select((order, index) => new
+                         {
+                             Order = order,
+                             PriorityScore = CalculatePriorityScore(customerList[index], order.OrderDate.GetValueOrDefault(DateTime.MinValue))
+                         })
+                         .OrderBy(order => order.PriorityScore)
+                         .Select(order => order.Order) // Sadece order'ları seçiyoruz
+                         .ToList();
+
+                     foreach (var order in sortedOrders)
+                     {
+                         var customer = await _customerRepository.GetByIdAsync(order.CustomerId);
+                         var product = await _productRepository.GetByIdAsync(order.ProductId);
+                         List<string> failureReasons = new List<string>();
+
+                         // Kontroller
+                         if (customer.Budget < order.TotalPrice)
+                         {
+                             failureReasons.Add("Müşteri bakiyesi yetersiz");
+                         }
+
+                         if (product.Stock < order.Quantity)
+                         {
+                             failureReasons.Add("Ürün stoğu yetersiz");
+                         }
+
+                         if (!failureReasons.Any())
+                         {
+                             // Sipariş başarılıysa işlemleri gerçekleştir
+                             customer.Budget -= order.TotalPrice;
+                             customer.TotalSpent += order.TotalPrice;
+                             product.Stock -= order.Quantity;
+                             order.OrderStatus = "Completed";
+
+                             await _customerRepository.UpdateAsync(customer);
+                             await _orderRepository.UpdateAsync(order);
+                             await _productRepository.UpdateAsync(product);
+                             if (customer.TotalSpent > 2000 && customer.CustomerType != "Premium")
+                             {
+                                 customer.CustomerType = "Premium";
+                             }
+                             // Başarılı işlem logu
+                             Console.WriteLine("tugba"+order.Customer.CustomerId);
+                             if (customer != null && product != null)
+                             {
+                                 await _logService.LogOrderAsync(new Log
+                                 {
+                                     CustomerId = customer.CustomerId, // Müşteri kaydını doğru şekilde al
+                                     OrderId = order.OrderId,
+                                     LogDate = DateTime.Now,
+                                     LogType = "Bilgilendirme",
+                                     LogDetails = $"Order {order.OrderId} başarıyla onaylandı.",
+                                     CustomerType = customer.CustomerType,
+                                     ProductName = product.ProductName,
+                                     Quantity = order.Quantity,
+                                     Result = "Başarılı"
+                                 });
+                             }
+                         }
+                         else
+                         {
+                             // Sipariş başarısızsa durumu kaydet
+                             order.OrderStatus = "Cancelled";
+                             await _orderRepository.UpdateAsync(order);
+
+                             // Hata logu
+                             await _logService.LogOrderAsync(new Log
+                             {
+                                 CustomerId = order.CustomerId,
+                                 OrderId = order.OrderId,
+                                 LogDate = DateTime.Now,
+                                 LogType = "Hata",
+                                 LogDetails = $"Order {order.OrderId} onaylanamadı. Sebep: {string.Join(", ", failureReasons)}.",
+                                 CustomerType = customer?.CustomerType ?? "Unknown",
+                                 ProductName = product?.ProductName ?? "Unknown",
+                                 Quantity = order.Quantity,
+                                 Result = "Failed"
+                             });
+                         }
+                     }
+                 }
+                 finally
+                 {
+                     _mutex.ReleaseMutex(); // Mutex serbest bırakılır
+                 }
+             }*/
         public async Task<IEnumerable<Order>> GetPendingOrdersAsync()
         {
             var allOrders = await _orderRepository.GetAllAsync();
