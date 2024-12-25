@@ -36,9 +36,17 @@ namespace OrderManagement.Services
 
         public async Task<IEnumerable<Order>> GetAllOrdersAsync()
         {
-            return await _orderRepository.GetAllAsync();
-        }
+            var allOrders = await _orderRepository.GetAllAsync();
 
+            // Her sipariş için priorityScore ve waitingTime'ı güncelliyoruz
+            foreach (var order in allOrders)
+            {
+                order.WaitingTime = (int)((DateTime.Now - order.OrderDate.GetValueOrDefault(DateTime.MinValue)).TotalSeconds); // Bekleme süresi (saniye cinsinden)
+                order.PriorityScore = CalculatePriorityScore(await _customerRepository.GetByIdAsync(order.CustomerId), order.OrderDate.GetValueOrDefault(DateTime.MinValue));
+            }
+
+            return allOrders;
+        }
         public async Task<Order> GetOrderByIdAsync(int id)
         {
             return await _orderRepository.GetByIdAsync(id);
@@ -68,7 +76,7 @@ namespace OrderManagement.Services
             //return null; // Aynı üründen toplamda 5'i aşan siparişe izin verme
 
             order.TotalPrice = order.Quantity * (await GetProductPriceAsync(order.ProductId));
-
+            
             await _orderRepository.AddAsync(order); // Siparişi veri tabanına ekle
             return order;
         }
@@ -243,8 +251,17 @@ namespace OrderManagement.Services
         public async Task<IEnumerable<Order>> GetPendingOrdersAsync()
         {
             var allOrders = await _orderRepository.GetAllAsync();
-            return allOrders.Where(order => order.OrderStatus == "Pending").ToList();
-       }
+            var pendingOrders = allOrders.Where(order => order.OrderStatus == "Pending").ToList();
+
+            // Her pending sipariş için priorityScore ve waitingTime'ı güncelliyoruz
+            foreach (var order in pendingOrders)
+            {
+                order.WaitingTime = (int)((DateTime.Now - order.OrderDate.GetValueOrDefault(DateTime.MinValue)).TotalSeconds);
+                order.PriorityScore = CalculatePriorityScore(await _customerRepository.GetByIdAsync(order.CustomerId), order.OrderDate.GetValueOrDefault(DateTime.MinValue));
+            }
+
+            return pendingOrders;
+        }
 
         private int CalculatePriorityScore(Customer customer, DateTime orderPlacedTime)
         {

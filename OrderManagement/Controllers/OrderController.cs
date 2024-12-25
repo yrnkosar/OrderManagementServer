@@ -58,7 +58,11 @@ namespace OrderManagement.Controllers
                 Quantity = orderDTO.Quantity,
                 OrderDate = DateTime.Now,
                 OrderStatus = "Pending",
-                CustomerId = int.Parse(userId)
+                CustomerId = int.Parse(userId),
+                WaitingTime =0,
+                PriorityScore = 0
+
+                
             };
 
             var result = await _orderService.CreateOrderAsync(order, user);

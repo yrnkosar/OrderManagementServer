@@ -18,6 +18,9 @@ public partial class Order
     public DateTime? OrderDate { get; set; }
 
     public string? OrderStatus { get; set; }
+    public double WaitingTime { get; set; }
+
+    public double PriorityScore { get; set; }
 
     public virtual Customer Customer { get; set; } = null!;
 
