@@ -11,7 +11,7 @@ namespace OrderManagement.Services
         Task<Order> GetOrderByIdAsync(int id);
         Task<Order> CreateOrderAsync(Order order, ClaimsPrincipal user);
         Task ApproveAllOrdersAsync();
-
+        Task<IEnumerable<Order>> GetOrdersByCustomerIdAsync(int customerId);
         Task<IEnumerable<Order>> GetPendingOrdersAsync(); // Bu satırı ekleyin
         // GetCustomerByIdAsync metodunu arabirime ekliyoruz
         Task<Customer> GetCustomerByIdAsync(int id);

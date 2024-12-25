@@ -101,7 +101,24 @@ namespace OrderManagement.Controllers
 
             return Ok(pendingOrders);
         }
+        [HttpGet("my-orders")]
+        public async Task<ActionResult<IEnumerable<Order>>> GetMyOrders()
+        {
+            // Oturum açmış kullanıcının kimliğini al
+            var user = User;
+            var userId = await _userService.GetCurrentUserIdAsync(user);
 
+            if (userId == null)
+                return Unauthorized("Geçersiz kullanıcı bilgisi");
+
+            // Kullanıcının siparişlerini al
+            var myOrders = await _orderService.GetOrdersByCustomerIdAsync(int.Parse(userId));
+
+            if (myOrders == null || !myOrders.Any())
+                return NotFound("Hiç sipariş bulunamadı.");
+
+            return Ok(myOrders);
+        }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Order>> GetOrder(int id)
