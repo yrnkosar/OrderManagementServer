@@ -7,6 +7,7 @@ using OrderManagement.Repositories;
 using OrderManagement.Services;
 using Microsoft.AspNetCore.SignalR;
 using System.Text;
+using OrderManagement.Hubs;
 
 public class Program
 {
@@ -119,6 +120,9 @@ public class Program
 
         // Other middleware
         app.UseHttpsRedirection();
+
+        // Map SignalR Hub (add this line)
+        app.MapHub<OrderHub>("/orderHub"); // Hub'ý buraya ekliyoruz
 
         // Map controllers
         app.MapControllers();

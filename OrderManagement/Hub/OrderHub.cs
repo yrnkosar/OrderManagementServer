@@ -9,5 +9,13 @@ namespace OrderManagement.Hubs
         {
             await Clients.All.SendAsync("ReceiveOrderStatusUpdate", orderId, status, isProcessing);
         }
+        public async Task JoinCustomerGroup(string customerId)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, customerId);
+        }
+        public async Task LeaveCustomerGroup(string customerId)
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, customerId);
+        }
     }
 }
