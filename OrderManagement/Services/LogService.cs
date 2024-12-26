@@ -16,7 +16,11 @@ namespace OrderManagement.Services
         {
             await _logRepository.AddAsync(log);
         }
-      
+        public async Task<IEnumerable<Log>> GetLogsByCustomerIdAsync(int customerId)
+        {
+            var logs = await _logRepository.GetAllAsync();
+            return logs.Where(log => log.CustomerId == customerId); // customerId'ye göre filtrelenmiş loglar
+        }
         public async Task<IEnumerable<Log>> GetLogsAsync()
         {
             return await _logRepository.GetAllAsync();
