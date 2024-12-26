@@ -76,10 +76,27 @@ namespace OrderManagement.Services
             //return null; // Aynı üründen toplamda 5'i aşan siparişe izin verme
 
             order.TotalPrice = order.Quantity * (await GetProductPriceAsync(order.ProductId));
-            
-            await _orderRepository.AddAsync(order); // Siparişi veri tabanına ekle
+
+            // Siparişi veri tabanına ekliyoruz
+            await _orderRepository.AddAsync(order);
+
+            // Sipariş başarıyla eklenmişse log kaydını tutuyoruz
+            await _logService.LogOrderAsync(new Log
+            {
+                CustomerId = customer.CustomerId,
+                OrderId = order.OrderId,
+                LogDate = DateTime.Now,
+                LogType = "Bilgilendirme",
+                LogDetails = $"Müşteri {customer.CustomerId} yeni sipariş oluşturdu. Sipariş ID: {order.OrderId}, Ürün ID: {order.ProductId}, Miktar: {order.Quantity}, Fiyat: {order.TotalPrice}",
+                CustomerType = customer.CustomerType,
+                ProductName = (await _productRepository.GetByIdAsync(order.ProductId))?.ProductName ?? "Bilinmeyen Ürün",
+                Quantity = order.Quantity,
+                Result = "Yeni Sipariş"
+            });
+
             return order;
         }
+
 
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1); // Aynı anda bir işlem için izin verir.
         public async Task ApproveAllOrdersAsync()
@@ -156,7 +173,7 @@ namespace OrderManagement.Services
                 if (!failureReasons.Any())
                 {
                     // Zaman aşımı için bir işlem süresi sınırı belirleyin
-                    using (var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10))) // 10 saniye sınırı
+                    using (var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(2))) // 2 dakika sınırı
                     {
                         try
                         {
@@ -205,6 +222,29 @@ namespace OrderManagement.Services
                             failureReasons.Add("Zaman aşımı");
                             order.OrderStatus = "Cancelled";
                             await _orderRepository.UpdateAsync(order);
+
+                            // Zaman aşımını logla
+                            await _logService.LogOrderAsync(new Log
+                            {
+                                CustomerId = customer.CustomerId,
+                                OrderId = order.OrderId,
+                                LogDate = DateTime.Now,
+                                LogType = "Hata",
+                                LogDetails = $"Sipariş {order.OrderId} zaman aşımına uğradı.",
+                                CustomerType = customer?.CustomerType ?? "Unknown",
+                                ProductName = product?.ProductName ?? "Unknown",
+                                Quantity = order.Quantity,
+                                Result = "Başarısız"
+                            });
+
+                            // SignalR ile zaman aşımı mesajını müşteriye gönderin
+                            await _hubContext.Clients.Group(customer.CustomerId.ToString())
+                                .SendAsync("ReceiveOrderStatusUpdate", new
+                                {
+                                    OrderId = order.OrderId,
+                                    Status = "Cancelled",
+                                    Message = $"Sipariş {order.OrderId} zaman aşımına uğradı."
+                                });
                         }
                     }
                 }
@@ -271,6 +311,155 @@ namespace OrderManagement.Services
             }
         }
 
+        /*    public async Task ProcessOrderAsync(Order order)
+             {
+                 try
+                 {
+                     // Siparişi "Processing" durumuna geçirin ve SignalR ile müşteriye bildirin
+                     order.OrderStatus = "Processing";
+                     await _orderRepository.UpdateAsync(order);
+                     await _hubContext.Clients.Group(order.CustomerId.ToString())
+                         .SendAsync("ReceiveOrderStatusUpdate", new
+                         {
+                             OrderId = order.OrderId,
+                             Status = "Processing",
+                             Message = "Sipariş işleniyor."
+                         });
+                     await Task.Delay(5000);
+
+                     var customer = await _customerRepository.GetByIdAsync(order.CustomerId);
+                     var product = await _productRepository.GetByIdAsync(order.ProductId);
+                     List<string> failureReasons = new List<string>();
+
+                     // İşlem kontrolleri
+                     if (customer.Budget < order.TotalPrice)
+                     {
+                         failureReasons.Add("Müşteri bakiyesi yetersiz");
+                     }
+
+                     if (product.Stock < order.Quantity)
+                     {
+                         failureReasons.Add("Ürün stoğu yetersiz");
+                     }
+
+                     if (!failureReasons.Any())
+                     {
+                         // Zaman aşımı için bir işlem süresi sınırı belirleyin
+                         using (var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10))) // 10 saniye sınırı
+                         {
+                             try
+                             {
+                                 // Başarılı işlem
+                                 customer.Budget -= order.TotalPrice;
+                                 customer.TotalSpent += order.TotalPrice;
+                                 product.Stock -= order.Quantity;
+                                 order.OrderStatus = "Completed";
+
+                                 await _customerRepository.UpdateAsync(customer);
+                                 await _productRepository.UpdateAsync(product);
+                                 await _orderRepository.UpdateAsync(order);
+
+                                 // Premium müşteriye yükseltme kontrolü
+                                 if (customer.TotalSpent > 2000 && customer.CustomerType != "Premium")
+                                 {
+                                     customer.CustomerType = "Premium";
+                                     await _customerRepository.UpdateAsync(customer);
+                                 }
+
+                                 // Başarı logu
+                                 await _logService.LogOrderAsync(new Log
+                                 {
+                                     CustomerId = customer.CustomerId,
+                                     OrderId = order.OrderId,
+                                     LogDate = DateTime.Now,
+                                     LogType = "Bilgilendirme",
+                                     LogDetails = $"Sipariş {order.OrderId} başarıyla tamamlandı.",
+                                     CustomerType = customer.CustomerType,
+                                     ProductName = product.ProductName,
+                                     Quantity = order.Quantity,
+                                     Result = "Başarılı"
+                                 });
+
+                                 // SignalR ile siparişin başarıyla tamamlandığını müşteriye bildir
+                                 await _hubContext.Clients.Group(customer.CustomerId.ToString())
+                                     .SendAsync("ReceiveOrderStatusUpdate", new
+                                     {
+                                         OrderId = order.OrderId,
+                                         Status = "Completed",
+                                         Message = $"Sipariş {order.OrderId} başarıyla tamamlandı."
+                                     });
+                             }
+                             catch (OperationCanceledException)
+                             {
+                                 failureReasons.Add("Zaman aşımı");
+                                 order.OrderStatus = "Cancelled";
+                                 await _orderRepository.UpdateAsync(order);
+                             }
+                         }
+                     }
+
+                     if (failureReasons.Any())
+                     {
+                         // Hata durumunda siparişi "Cancelled" olarak işaretleyin
+                         order.OrderStatus = "Cancelled";
+                         await _orderRepository.UpdateAsync(order);
+
+                         // Hata logu
+                         await _logService.LogOrderAsync(new Log
+                         {
+                             CustomerId = customer.CustomerId,
+                             OrderId = order.OrderId,
+                             LogDate = DateTime.Now,
+                             LogType = "Hata",
+                             LogDetails = $"Sipariş {order.OrderId} iptal edildi. Sebep: {string.Join(", ", failureReasons)}.",
+                             CustomerType = customer?.CustomerType ?? "Unknown",
+                             ProductName = product?.ProductName ?? "Unknown",
+                             Quantity = order.Quantity,
+                             Result = "Başarısız"
+                         });
+
+                         // SignalR ile iptal mesajını müşteriye gönderin
+                         await _hubContext.Clients.Group(customer.CustomerId.ToString())
+                             .SendAsync("ReceiveOrderStatusUpdate", new
+                             {
+                                 OrderId = order.OrderId,
+                                 Status = "Cancelled",
+                                 Message = $"Sipariş {order.OrderId} iptal edildi. Sebep: {string.Join(", ", failureReasons)}"
+                             });
+                     }
+                 }
+                 catch (SqlException)
+                 {
+                     // Veritabanı hatasını yakalayın
+                     await _logService.LogOrderAsync(new Log
+                     {
+                         CustomerId = order.CustomerId,
+                         OrderId = order.OrderId,
+                         LogDate = DateTime.Now,
+                         LogType = "Hata",
+                         LogDetails = $"Sipariş {order.OrderId} veritabanı hatası nedeniyle başarısız oldu.",
+                         CustomerType = "Unknown",
+                         ProductName = "Unknown",
+                         Quantity = order.Quantity,
+                         Result = "Başarısız"
+                     });
+
+                     // SignalR ile veritabanı hatasını müşteriye bildir
+                     await _hubContext.Clients.Group(order.CustomerId.ToString())
+                         .SendAsync("ReceiveOrderStatusUpdate", new
+                         {
+                             OrderId = order.OrderId,
+                             Status = "DatabaseError",
+                             Message = "Sipariş veritabanı hatası nedeniyle başarısız oldu."
+                         });
+                 }
+                 catch (Exception ex)
+                 {
+                     Console.WriteLine($"Sipariş işleme hatası: {ex.Message}");
+                     throw;
+                 }
+             }
+             */
         /*
                 public async Task ProcessOrderAsync(Order order)
                 {
