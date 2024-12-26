@@ -159,9 +159,9 @@ namespace OrderManagement.Controllers
         public async Task<ActionResult<IEnumerable<Product>>> GetAllProducts()
         {
             var products = await _productService.GetAllProductsAsync();
-            return Ok(products);
+            var visibleProducts = products.Where(p => p.Visibility).ToList(); // Sadece görünür ürünler
+            return Ok(visibleProducts);
         }
-
         [HttpGet("{id}")]
         public async Task<ActionResult<Product>> GetProductById(int id)
         {
@@ -238,6 +238,7 @@ namespace OrderManagement.Controllers
             return Ok(existingProduct);
         }
 
+      
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteProduct(int id)
@@ -248,13 +249,13 @@ namespace OrderManagement.Controllers
 
             await PerformAdminActionAsync(async () =>
             {
-                await _productService.DeleteProductAsync(id);
+                product.Visibility = false; // Ürünü görünmez yap
+                await _productService.UpdateProductAsync(product); // Güncelleme işlemi
                 await _hubContext.Clients.All.SendAsync("ProductDeleted", id);
             });
 
             return NoContent();
         }
-
         private async Task PerformAdminActionAsync(Func<Task> action)
         {
             await _semaphore.WaitAsync();
