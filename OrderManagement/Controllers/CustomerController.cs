@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using OrderManagement.Models;
 using OrderManagement.Services;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace OrderManagement.Controllers
@@ -11,10 +12,11 @@ namespace OrderManagement.Controllers
     public class CustomerController : ControllerBase
     {
         private readonly ICustomerService _customerService;
-
-        public CustomerController(ICustomerService customerService)
+        private readonly IUserService _userService;
+        public CustomerController(ICustomerService customerService, IUserService userService)
         {
             _customerService = customerService;
+            _userService = userService;
         }
 
         [HttpGet]
@@ -40,13 +42,49 @@ namespace OrderManagement.Controllers
             return CreatedAtAction(nameof(GetCustomerById), new { id = customer.CustomerId }, customer);
         }
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateCustomer(int id, Customer customer)
+
+        [HttpPut("update-profile")]
+        public async Task<IActionResult> UpdateCustomerProfile([FromBody] Customer updatedCustomer)
         {
-            if (id != customer.CustomerId) return BadRequest();
-            await _customerService.UpdateCustomerAsync(customer);
-            return NoContent();
+            // Oturum açmış kullanıcının kimliğini al
+            var user = User;
+            var userIdClaim = await _userService.GetCurrentUserIdAsync(user);
+
+            // Geçerli bir kullanıcı kimliği alındı mı?
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized("Geçersiz kullanıcı bilgisi");
+
+            // userId'yi int'e dönüştür
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized("Geçersiz kullanıcı kimliği.");
+            }
+
+            // Güncellenmek istenen müşteri kimliği ile giriş yapan kullanıcı kimliği eşleşiyor mu?
+            if (userId != updatedCustomer.CustomerId)
+            {
+                return Forbid("Sadece kendi bilgilerinizi güncelleyebilirsiniz.");
+            }
+
+            // Kullanıcıyı veritabanından al
+            var existingCustomer = await _customerService.GetCustomerByIdAsync(userId);
+            if (existingCustomer == null)
+            {
+                return NotFound("Müşteri bulunamadı.");
+            }
+
+            // Güncelleme işlemi
+            existingCustomer.CustomerName = updatedCustomer.CustomerName;
+            existingCustomer.CustomerPassword = updatedCustomer.CustomerPassword;
+            existingCustomer.Budget = updatedCustomer.Budget;
+            existingCustomer.photo = updatedCustomer.photo;
+
+            // Veritabanını güncelle
+            await _customerService.UpdateCustomerAsync(existingCustomer);
+
+            return Ok("Profil güncellendi.");
         }
+
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCustomer(int id)
