@@ -148,11 +148,13 @@ namespace OrderManagement.Controllers
         private readonly IProductService _productService;
         private readonly IHubContext<OrderHub> _hubContext; // OrderHub kullanılıyor
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+        private readonly SystemStatusService _systemStatusService;
 
-        public ProductController(IProductService productService, IHubContext<OrderHub> hubContext)
+        public ProductController(IProductService productService, IHubContext<OrderHub> hubContext, SystemStatusService systemStatusService)
         {
             _productService = productService;
             _hubContext = hubContext;
+            _systemStatusService = systemStatusService; // SystemStatusService'i ata
         }
 
         [HttpGet]
@@ -192,6 +194,7 @@ namespace OrderManagement.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateProductStock(int id, [FromBody] int newStock)
         {
+            await _systemStatusService.SetAdminProcessing(true);
             var product = await _productService.GetProductByIdAsync(id);
             if (product == null)
                 return NotFound("Ürün bulunamadı.");
@@ -199,10 +202,11 @@ namespace OrderManagement.Controllers
             await PerformAdminActionAsync(async () =>
             {
                 product.Stock = newStock;
+                product.Visibility = true;
                 await _productService.UpdateProductAsync(product);
                 await _hubContext.Clients.All.SendAsync("ProductUpdated", product.ProductId, product.Stock);
             });
-
+            await _systemStatusService.SetAdminProcessing(false);
             return Ok(product);
         }
 
@@ -210,6 +214,8 @@ namespace OrderManagement.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateProductPartial(int id, [FromBody] Product updatedFields)
         {
+            await _systemStatusService.SetAdminProcessing(true);
+            await Task.Delay(10000);
             var existingProduct = await _productService.GetProductByIdAsync(id);
             if (existingProduct == null)
                 return NotFound("Ürün bulunamadı.");
@@ -230,15 +236,13 @@ namespace OrderManagement.Controllers
 
                 if (!string.IsNullOrEmpty(updatedFields.Photo))
                     existingProduct.Photo = updatedFields.Photo;
-
+                existingProduct.Visibility = true;
                 await _productService.UpdateProductAsync(existingProduct);
                 await _hubContext.Clients.All.SendAsync("ProductUpdated", existingProduct.ProductId);
             });
-
+            await _systemStatusService.SetAdminProcessing(false);
             return Ok(existingProduct);
-        }
-
-      
+        }/*
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteProduct(int id)
@@ -249,11 +253,29 @@ namespace OrderManagement.Controllers
 
             await PerformAdminActionAsync(async () =>
             {
+                await _productService.DeleteProductAsync(id);
+                await _hubContext.Clients.All.SendAsync("ProductDeleted", id);
+            });
+
+            return NoContent();
+        }
+        */
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteProduct(int id)
+        {
+            await _systemStatusService.SetAdminProcessing(true);
+            var product = await _productService.GetProductByIdAsync(id);
+            if (product == null)
+                return NotFound("Ürün bulunamadı.");
+
+            await PerformAdminActionAsync(async () =>
+            {
                 product.Visibility = false; // Ürünü görünmez yap
                 await _productService.UpdateProductAsync(product); // Güncelleme işlemi
                 await _hubContext.Clients.All.SendAsync("ProductDeleted", id);
             });
-
+            await _systemStatusService.SetAdminProcessing(false);
             return NoContent();
         }
         private async Task PerformAdminActionAsync(Func<Task> action)

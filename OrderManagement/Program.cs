@@ -69,7 +69,7 @@ public class Program
         builder.Services.AddScoped<IUserService, UserService>();
         builder.Services.AddScoped<ILogService, LogService>(); // LogService Registration
         builder.Services.AddScoped<ILogRepository, LogRepository>(); // LogRepository Registration
-
+        builder.Services.AddSingleton<SystemStatusService>();
         // Add SignalR
         builder.Services.AddSignalR();  // SignalR servisini ekleyin
 
