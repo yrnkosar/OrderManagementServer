@@ -156,14 +156,20 @@ namespace OrderManagement.Controllers
             _hubContext = hubContext;
             _systemStatusService = systemStatusService; // SystemStatusService'i ata
         }
-
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Product>>> GetAllProducts()
         {
-            var products = await _productService.GetAllProductsAsync();
-            var visibleProducts = products.Where(p => p.Visibility).ToList(); // Sadece görünür ürünler
-            return Ok(visibleProducts);
+            var products = await _productService.GetAllProductsAsync(); // Tüm ürünleri al
+            return Ok(products); // Görünürlük filtresi olmadan tüm ürünleri döndür
         }
+
+        /* [HttpGet]
+         public async Task<ActionResult<IEnumerable<Product>>> GetAllProducts()
+         {
+             var products = await _productService.GetAllProductsAsync();
+             var visibleProducts = products.Where(p => p.Visibility).ToList(); // Sadece görünür ürünler
+             return Ok(visibleProducts);
+         }*/
         [HttpGet("{id}")]
         public async Task<ActionResult<Product>> GetProductById(int id)
         {
