@@ -9,7 +9,9 @@ using System.Threading.Tasks;
 
 namespace OrderManagement.Controllers
 {
-    public class RandomDataController : Controller
+    [ApiController]
+    [Route("api/[controller]")]
+    public class RandomDataController : ControllerBase
     {
         private readonly ICustomerService _customerService;
         private readonly IProductService _productService;
@@ -24,6 +26,7 @@ namespace OrderManagement.Controllers
             _productRepository = productRepository;
         }
 
+        [HttpPost("generate")]
         public async Task<IActionResult> GenerateRandomData()
         {
             Random rand = new Random();
@@ -71,7 +74,7 @@ namespace OrderManagement.Controllers
                 }
             }
 
-            return Ok("Rastgele müşteri ve ürün verileri başarıyla oluşturuldu.");
+            return Ok("Random data successfully generated.");
         }
     }
 }
