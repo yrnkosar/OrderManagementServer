@@ -156,14 +156,18 @@ namespace OrderManagement.Services
         }
         public async Task ProcessOrderAsync(Order order)
         {
+            List<string> failureReasons = new List<string>();
+
             try
             {
                 var customer = await _customerRepository.GetByIdAsync(order.CustomerId);
                 var product = await _productRepository.GetByIdAsync(order.ProductId);
+
                 // Siparişin bekleme süresi 2 dakikayı geçmiş mi kontrol edin
                 if (order.WaitingTime > 120)
                 {
-                    // Zaman aşımı logu oluştur
+                    failureReasons.Add("Zaman aşımı");
+
                     await _logService.LogOrderAsync(new Log
                     {
                         CustomerId = order.CustomerId,
@@ -171,26 +175,24 @@ namespace OrderManagement.Services
                         LogDate = DateTime.Now,
                         LogType = "Hata",
                         LogDetails = $"Sipariş {order.OrderId} zaman aşımı nedeniyle iptal edildi.",
-                        CustomerType = customer.CustomerType,
-                        ProductName = product.ProductName,
+                        CustomerType = customer?.CustomerType ?? "Unknown",
+                        ProductName = product?.ProductName ?? "Unknown",
                         Quantity = order.Quantity,
                         Result = "Başarısız"
                     });
 
-                    // Siparişi "Cancelled" olarak işaretleyin
                     order.OrderStatus = "Cancelled";
                     await _orderRepository.UpdateAsync(order);
 
-                    // Müşteriye ve admin'e SignalR ile zaman aşımı mesajı gönderin
                     await _hubContext.Clients.Group(order.CustomerId.ToString())
                         .SendAsync("ReceiveOrderStatusUpdate", new
                         {
                             OrderId = order.OrderId,
                             Status = "Cancelled",
-                            Message = "Sipariş zaman aşımı nedeniyle iptal edildi."
+                            Message = $"Sipariş zaman aşımı nedeniyle iptal edildi. Sebep: {string.Join(", ", failureReasons)}"
                         });
 
-                    return; // İşleme devam etmiyoruz
+                    return;
                 }
 
                 // Siparişi "Processing" durumuna geçirin ve SignalR ile müşteriye bildirin
@@ -205,9 +207,6 @@ namespace OrderManagement.Services
                     });
 
                 await Task.Delay(5000); // Simülasyon için bekleme
-
-               
-                List<string> failureReasons = new List<string>();
 
                 // Ürün görünürlüğünü kontrol edin
                 if (product == null || !product.Visibility)
@@ -282,7 +281,7 @@ namespace OrderManagement.Services
 
                     await _logService.LogOrderAsync(new Log
                     {
-                        CustomerId = customer.CustomerId,
+                        CustomerId = customer?.CustomerId ?? 0,
                         OrderId = order.OrderId,
                         LogDate = DateTime.Now,
                         LogType = "Hata",
@@ -304,6 +303,8 @@ namespace OrderManagement.Services
             }
             catch (SqlException)
             {
+                failureReasons.Add("Veritabanı hatası");
+
                 await _logService.LogOrderAsync(new Log
                 {
                     CustomerId = order.CustomerId,
@@ -322,15 +323,18 @@ namespace OrderManagement.Services
                     {
                         OrderId = order.OrderId,
                         Status = "DatabaseError",
-                        Message = "Sipariş veritabanı hatası nedeniyle başarısız oldu."
+                        Message = $"Sipariş veritabanı hatası nedeniyle başarısız oldu. Sebep: {string.Join(", ", failureReasons)}"
                     });
             }
             catch (Exception ex)
             {
+                failureReasons.Add("Bilinmeyen hata");
+
                 Console.WriteLine($"Sipariş işleme hatası: {ex.Message}");
                 throw;
             }
         }
+
 
         public async Task<IEnumerable<Order>> GetPendingOrdersAsync()
         {
