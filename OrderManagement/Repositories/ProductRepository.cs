@@ -55,27 +55,23 @@ namespace OrderManagement.Repositories
                     await _context.SaveChangesAsync();
                 }
 
-                // Bağımlı siparişleri kontrol et
+               
                 var orders = await _context.Orders.Where(o => o.ProductId == id).ToListAsync();
                 if (orders.Any())
                 {
-                    // Bağımlı siparişleri sil
+                    
                     _context.Orders.RemoveRange(orders);
                     await _context.SaveChangesAsync();
                 }
 
-                // Ürünle ilişkili logları sil
-               
-                // Ürünü sil
                 _context.Products.Remove(product);
                 await _context.SaveChangesAsync();
 
-                // İşlem başarılı ise commit et
                 await transaction.CommitAsync();
             }
             catch (Exception ex)
             {
-                // Hata durumunda rollback yap
+                
                 await transaction.RollbackAsync();
                 throw new Exception("Ürün silinirken hata oluştu.", ex);
             }

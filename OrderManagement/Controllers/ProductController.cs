@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using OrderManagement.Models;
 using OrderManagement.Services;
-using OrderManagement.Hubs; // Bu satır eklenmeli
+using OrderManagement.Hubs; 
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -15,7 +15,7 @@ namespace OrderManagement.Controllers
     public class ProductController : ControllerBase
     {
         private readonly IProductService _productService;
-        private readonly IHubContext<OrderHub> _hubContext; // OrderHub kullanılıyor
+        private readonly IHubContext<OrderHub> _hubContext;
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
         private readonly SystemStatusService _systemStatusService;
 
@@ -23,14 +23,14 @@ namespace OrderManagement.Controllers
         {
             _productService = productService;
             _hubContext = hubContext;
-            _systemStatusService = systemStatusService; // SystemStatusService'i ata
+            _systemStatusService = systemStatusService; 
         }
         
         [HttpGet]
          public async Task<ActionResult<IEnumerable<Product>>> GetAllProducts()
          {
              var products = await _productService.GetAllProductsAsync();
-             var visibleProducts = products.Where(p => p.Visibility).ToList(); // Sadece görünür ürünler
+             var visibleProducts = products.Where(p => p.Visibility).ToList(); 
              return Ok(visibleProducts);
          }
         [HttpGet("{id}")]
@@ -53,7 +53,7 @@ namespace OrderManagement.Controllers
             await PerformAdminActionAsync(async () =>
             {
                 await _productService.CreateProductAsync(product);
-                await _hubContext.Clients.All.SendAsync("ProductAdded", product); // SignalR bildirimi
+                await _hubContext.Clients.All.SendAsync("ProductAdded", product); 
             });
 
             return CreatedAtAction(nameof(GetProductById), new { id = product.ProductId }, product);
@@ -111,6 +111,24 @@ namespace OrderManagement.Controllers
             });
             await _systemStatusService.SetAdminProcessing(false);
             return Ok(existingProduct);
+        }
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteProduct(int id)
+        {
+            await _systemStatusService.SetAdminProcessing(true);
+            var product = await _productService.GetProductByIdAsync(id);
+            if (product == null)
+                return NotFound("Ürün bulunamadı.");
+
+            await PerformAdminActionAsync(async () =>
+            {
+                product.Visibility = false; 
+                await _productService.UpdateProductAsync(product); 
+                await _hubContext.Clients.All.SendAsync("ProductDeleted", id);
+            });
+            await _systemStatusService.SetAdminProcessing(false);
+            return NoContent();
         }/*
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
@@ -129,24 +147,6 @@ namespace OrderManagement.Controllers
             return NoContent();
         }
         */
-        [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteProduct(int id)
-        {
-            await _systemStatusService.SetAdminProcessing(true);
-            var product = await _productService.GetProductByIdAsync(id);
-            if (product == null)
-                return NotFound("Ürün bulunamadı.");
-
-            await PerformAdminActionAsync(async () =>
-            {
-                product.Visibility = false; // Ürünü görünmez yap
-                await _productService.UpdateProductAsync(product); // Güncelleme işlemi
-                await _hubContext.Clients.All.SendAsync("ProductDeleted", id);
-            });
-            await _systemStatusService.SetAdminProcessing(false);
-            return NoContent();
-        }
         private async Task PerformAdminActionAsync(Func<Task> action)
         {
             await _semaphore.WaitAsync();

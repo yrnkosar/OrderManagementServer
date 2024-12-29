@@ -12,11 +12,10 @@ namespace OrderManagement.Services
         Task<Order> CreateOrderAsync(Order order, ClaimsPrincipal user);
         Task ApproveAllOrdersAsync();
         Task<IEnumerable<Order>> GetOrdersByCustomerIdAsync(int customerId);
-        Task<IEnumerable<Order>> GetPendingOrdersAsync(); // Bu satırı ekleyin
-        // GetCustomerByIdAsync metodunu arabirime ekliyoruz
+        Task<IEnumerable<Order>> GetPendingOrdersAsync(); 
+       
         Task<Customer> GetCustomerByIdAsync(int id);
 
-        // GetProductPriceAsync metodunu arabirime ekliyoruz
         Task<decimal> GetProductPriceAsync(int productId);
     }
 }

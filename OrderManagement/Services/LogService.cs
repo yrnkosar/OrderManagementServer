@@ -19,7 +19,7 @@ namespace OrderManagement.Services
         public async Task<IEnumerable<Log>> GetLogsByCustomerIdAsync(int customerId)
         {
             var logs = await _logRepository.GetAllAsync();
-            return logs.Where(log => log.CustomerId == customerId); // customerId'ye göre filtrelenmiş loglar
+            return logs.Where(log => log.CustomerId == customerId);
         }
         public async Task<IEnumerable<Log>> GetLogsAsync()
         {

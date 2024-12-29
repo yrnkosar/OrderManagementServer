@@ -15,10 +15,10 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // Add services to the container.
+       
         builder.Services.AddControllers();
 
-        // CORS Policy Definition
+   
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowAll", builder =>
@@ -29,7 +29,7 @@ public class Program
             });
         });
 
-        // JWT Authentication
+   
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
@@ -46,19 +46,16 @@ public class Program
                 };
             });
 
-        // Authorization Policy for Admin role
         builder.Services.AddAuthorization(options =>
         {
             options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
         });
 
-        // DbContext and other services
         builder.Services.AddDbContext<OrderManagementContext>(options =>
             options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
         builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
-        // Register Repositories and Services
         builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
         builder.Services.AddScoped<ICustomerService, CustomerService>();
         builder.Services.AddScoped<LoginService>();
@@ -67,13 +64,12 @@ public class Program
         builder.Services.AddScoped<IOrderRepository, OrderRepository>();
         builder.Services.AddScoped<IOrderService, OrderService>();
         builder.Services.AddScoped<IUserService, UserService>();
-        builder.Services.AddScoped<ILogService, LogService>(); // LogService Registration
-        builder.Services.AddScoped<ILogRepository, LogRepository>(); // LogRepository Registration
+        builder.Services.AddScoped<ILogService, LogService>(); 
+        builder.Services.AddScoped<ILogRepository, LogRepository>(); 
         builder.Services.AddSingleton<SystemStatusService>();
-        // Add SignalR
-        builder.Services.AddSignalR();  // SignalR servisini ekleyin
+        
+        builder.Services.AddSignalR();  
 
-        // Swagger UI for JWT Authorization
         builder.Services.AddSwaggerGen(c =>
         {
             c.SwaggerDoc("v1", new OpenApiInfo { Title = "Order Management API", Version = "v1" });
@@ -104,30 +100,25 @@ public class Program
 
         var app = builder.Build();
 
-        // Swagger should only be available in development environment
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
             app.UseSwaggerUI();
         }
 
-        // CORS Middleware
         app.UseCors("AllowAll");
 
-        // Authentication and Authorization Middleware
         app.UseAuthentication();
         app.UseAuthorization();
 
-        // Other middleware
+    
         app.UseHttpsRedirection();
 
-        // Map SignalR Hub (add this line)
-        app.MapHub<OrderHub>("/orderHub"); // Hub'ý buraya ekliyoruz
-
-        // Map controllers
+        app.MapHub<OrderHub>("/orderHub"); 
+ 
         app.MapControllers();
 
-        // Run the application
+   
         app.Run();
     }
 }

@@ -20,7 +20,7 @@ namespace OrderManagement.Repositories
         }
         public async Task<IEnumerable<Log>> GetAllAsync()
         {
-            return await _context.Logs.ToListAsync();  // ToListAsync ile tüm logları listele
+            return await _context.Logs.ToListAsync();  
         }
     }
 }

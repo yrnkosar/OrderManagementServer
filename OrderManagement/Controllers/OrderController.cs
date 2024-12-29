@@ -17,16 +17,16 @@ namespace OrderManagement.Controllers
     {
         private readonly IOrderService _orderService;
         private readonly IUserService _userService;
-        private readonly ILogService _logService; // Log servisi eklendi
+        private readonly ILogService _logService;
 
         public OrderController(IOrderService orderService, IUserService userService, ILogService logService)
         {
             _orderService = orderService;
             _userService = userService;
-            _logService = logService; // Log servisi bağlandı
+            _logService = logService; 
         }
         [HttpGet("all-orders")]
-        [Authorize(Roles = "Admin")]  // Sadece adminler bu endpoint'e erişebilir
+        [Authorize(Roles = "Admin")]  
         public async Task<ActionResult<IEnumerable<Order>>> GetAllOrders()
         {
             var allOrders = await _orderService.GetAllOrdersAsync();
@@ -74,14 +74,14 @@ namespace OrderManagement.Controllers
 
             return BadRequest("Sipariş işlenirken bir hata oluştu.");
         }
-            // Siparişleri onaylama işlemi
+          
         [HttpPost("approve-all-orders")]
-        [Authorize(Roles = "Admin")]  // Sadece adminlerin onaylama yetkisi olsun
+        [Authorize(Roles = "Admin")]  
         public async Task<IActionResult> ApproveAllOrders()
         { 
             try
             {
-                // Tüm siparişleri onaylama işlemi
+                
                 await _orderService.ApproveAllOrdersAsync();
 
                 return Ok("Tüm siparişler başarıyla onaylandı.");
@@ -95,7 +95,7 @@ namespace OrderManagement.Controllers
         }
 
         [HttpGet("pending-orders")]
-        [Authorize(Roles = "Admin")]  // Sadece adminler bu endpoint'e erişebilir
+        [Authorize(Roles = "Admin")]  
         public async Task<ActionResult<IEnumerable<Order>>> GetPendingOrders()
         {
             var pendingOrders = await _orderService.GetPendingOrdersAsync();
@@ -108,14 +108,13 @@ namespace OrderManagement.Controllers
         [HttpGet("my-orders")]
         public async Task<ActionResult<IEnumerable<Order>>> GetMyOrders()
         {
-            // Oturum açmış kullanıcının kimliğini al
+           
             var user = User;
             var userId = await _userService.GetCurrentUserIdAsync(user);
 
             if (userId == null)
                 return Unauthorized("Geçersiz kullanıcı bilgisi");
 
-            // Kullanıcının siparişlerini al
             var myOrders = await _orderService.GetOrdersByCustomerIdAsync(int.Parse(userId));
 
             if (myOrders == null || !myOrders.Any())

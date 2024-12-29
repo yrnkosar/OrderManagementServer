@@ -28,8 +28,9 @@ namespace OrderManagement.Services
 
         public async Task CreateCustomerAsync(Customer customer)
         {
-            customer.TotalSpent = 0; // TotalSpent başlatılıyor.
+            customer.TotalSpent = 0; 
             await _customerRepository.AddAsync(customer);
+
         }
 
         public async Task UpdateCustomerAsync(Customer customer)
@@ -44,12 +45,12 @@ namespace OrderManagement.Services
 
         public async Task<Customer> GetCurrentCustomerAsync(ClaimsPrincipal user)
         {
-            // Kullanıcı kimliğini alıyoruz
+           
             var userId = await _userService.GetCurrentUserIdAsync(user);
             if (userId == null)
-                return null; // Geçersiz kullanıcı kimliği
+                return null; 
 
-            // Kullanıcı kimliği ile müşteri bilgilerini alıyoruz
+            
             return await _customerRepository.GetByIdAsync(int.Parse(userId));
         }
 

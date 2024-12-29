@@ -20,9 +20,9 @@ namespace OrderManagement.Services
         private readonly IProductRepository _productRepository;
         private readonly ICustomerService _customerService;
         private readonly IUserService _userService;
-        private readonly ILogService _logService; // Burada _logService'i ekliyoruz
-        private static readonly Mutex _mutex = new Mutex(); // Mutex nesnesi
-        private readonly IHubContext<OrderHub> _hubContext; // SignalR hub context
+        private readonly ILogService _logService; 
+        private static readonly Mutex _mutex = new Mutex(); 
+        private readonly IHubContext<OrderHub> _hubContext; 
         private readonly SystemStatusService _systemStatusService;
 
         public OrderService(IOrderRepository orderRepository, ICustomerRepository customerRepository, IProductRepository productRepository,
@@ -35,7 +35,7 @@ namespace OrderManagement.Services
             _userService = userService;
             _logService = logService;
             _hubContext = hubContext;
-            _systemStatusService = systemStatusService; // SystemStatusService'i başlatıyoruz
+            _systemStatusService = systemStatusService; 
         }
 
         public async Task<IEnumerable<Order>> GetAllOrdersAsync()
@@ -47,7 +47,7 @@ namespace OrderManagement.Services
                 if (order.OrderStatus != "Completed" && order.OrderStatus != "Cancelled")
 
                 {
-                    order.WaitingTime = (int)((DateTime.Now - order.OrderDate.GetValueOrDefault(DateTime.MinValue)).TotalSeconds); // Bekleme süresi (saniye cinsinden)
+                    order.WaitingTime = (int)((DateTime.Now - order.OrderDate.GetValueOrDefault(DateTime.MinValue)).TotalSeconds); 
                     order.PriorityScore = CalculatePriorityScore(await _customerRepository.GetByIdAsync(order.CustomerId), order.OrderDate.GetValueOrDefault(DateTime.MinValue));
                     await _orderRepository.UpdateAsync(order);
                 }
@@ -64,37 +64,30 @@ namespace OrderManagement.Services
         {
             if (await _systemStatusService.IsAdminProcessing())
             {
-                return null; // Sipariş oluşturulamayacak durumda
+                return null; 
             }
 
-
-            // Kullanıcı kimliğini alıyoruz
             var userId = await _userService.GetCurrentUserIdAsync(user);
             if (userId == null || order.Quantity <= 0)
-                return null; // Geçersiz sipariş
+                return null; 
 
             var customerId = int.Parse(userId);
 
-            // Müşteri bilgilerini alıyoruz
             var customer = await _customerRepository.GetByIdAsync(customerId);
             if (customer == null)
-                return null; // Müşteri bulunamadı
+                return null; 
 
-            // Müşterinin aynı üründen toplam sipariş miktarını kontrol ediyoruz
             var customerOrders = await _orderRepository.GetAllAsync();
             var totalProductOrders = customerOrders
                 .Where(o => o.CustomerId == customerId && o.ProductId == order.ProductId && o.OrderStatus != "Cancelled")
                 .Sum(o => o.Quantity);
 
-            //if (totalProductOrders + order.Quantity > 5)
-            //return null; // Aynı üründen toplamda 5'i aşan siparişe izin verme
+
 
             order.TotalPrice = order.Quantity * (await GetProductPriceAsync(order.ProductId));
 
-            // Siparişi veri tabanına ekliyoruz
             await _orderRepository.AddAsync(order);
 
-            // Sipariş başarıyla eklenmişse log kaydını tutuyoruz
             await _logService.LogOrderAsync(new Log
             {
                 CustomerId = customer.CustomerId,
@@ -112,13 +105,13 @@ namespace OrderManagement.Services
         }
 
 
-        private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1); // Aynı anda bir işlem için izin verir.
+        private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1); 
         public async Task ApproveAllOrdersAsync()
         {
-            await _semaphore.WaitAsync(); // Kilidi al
+            await _semaphore.WaitAsync(); 
             try
             {
-                // Tüm "Pending" (onaylanmamış) siparişleri alıyoruz
+              
                 var allOrders = await _orderRepository.GetAllAsync();
                 var pendingOrders = allOrders.Where(order => order.OrderStatus == "Pending").ToList();
 
@@ -128,30 +121,28 @@ namespace OrderManagement.Services
                     return;
                 }
 
-                // Asenkron işlemleri sırasıyla ele alıyoruz
+            
                 var customerTasks = pendingOrders.Select(order => _customerRepository.GetByIdAsync(order.CustomerId)).ToList();
                 var customerList = await Task.WhenAll(customerTasks);
 
-                // Siparişleri öncelik skora göre sıralıyoruz
                 var sortedOrders = pendingOrders
                     .Select((order, index) => new
                     {
                         Order = order,
                         PriorityScore = CalculatePriorityScore(customerList[index], order.OrderDate.GetValueOrDefault(DateTime.MinValue))
                     })
-                    .OrderByDescending(order => order.PriorityScore) // Önceliğe göre azalan sıralama (en yüksek öncelik ilk sırada)
-                    .Select(order => order.Order) // Sadece order'ları seçiyoruz
+                    .OrderByDescending(order => order.PriorityScore) 
+                    .Select(order => order.Order) 
                     .ToList();
 
                 foreach (var order in sortedOrders)
                 {
-                    await ProcessOrderAsync(order); // Her bir siparişi sırasıyla işliyoruz
-                   
+                    await ProcessOrderAsync(order); 
                 }
             }
             finally
             {
-                _semaphore.Release(); // Kilidi serbest bırak
+                _semaphore.Release(); 
             }
         }
         public async Task ProcessOrderAsync(Order order)
@@ -160,14 +151,12 @@ namespace OrderManagement.Services
             {
                 var customer = await _customerRepository.GetByIdAsync(order.CustomerId);
                 var product = await _productRepository.GetByIdAsync(order.ProductId);
-                // Siparişin bekleme süresi 2 dakikayı geçmiş mi kontrol edin
                 List<string> failureReasons = new List<string>();
 
-                if (order.WaitingTime > 120)
+                if (order.WaitingTime > 300)
                 {
                     failureReasons.Add("Zaman aşımı");
 
-                    // Zaman aşımı logu oluştur
                     await _logService.LogOrderAsync(new Log
                     {
                         CustomerId = order.CustomerId,
@@ -181,11 +170,9 @@ namespace OrderManagement.Services
                         Result = "Başarısız"
                     });
 
-                    // Siparişi "Cancelled" olarak işaretleyin
                     order.OrderStatus = "Cancelled";
                     await _orderRepository.UpdateAsync(order);
 
-                    // Müşteriye ve admin'e SignalR ile zaman aşımı mesajı gönderin
                     await _hubContext.Clients.Group(order.CustomerId.ToString())
                         .SendAsync("ReceiveOrderStatusUpdate", new
                         {
@@ -194,10 +181,9 @@ namespace OrderManagement.Services
                             Message = "Sipariş zaman aşımı nedeniyle iptal edildi."
                         });
 
-                    return; // İşleme devam etmiyoruz
+                    return; 
                 }
 
-                // Siparişi "Processing" durumuna geçirin ve SignalR ile müşteriye bildirin
                 order.OrderStatus = "Processing";
                 await _orderRepository.UpdateAsync(order);
                 await _hubContext.Clients.Group(order.CustomerId.ToString())
@@ -208,16 +194,13 @@ namespace OrderManagement.Services
                         Message = "Sipariş işleniyor."
                     });
 
-                await Task.Delay(5000); // Simülasyon için bekleme
+                await Task.Delay(5000);
 
-
-                // Ürün görünürlüğünü kontrol edin
                 if (product == null || !product.Visibility)
                 {
                     failureReasons.Add("Ürün silindi");
                 }
 
-                // İşlem kontrolleri
                 if (customer.Budget < order.TotalPrice)
                 {
                     failureReasons.Add("Müşteri bakiyesi yetersiz");
@@ -339,7 +322,6 @@ namespace OrderManagement.Services
             var allOrders = await _orderRepository.GetAllAsync();
             var pendingOrders = allOrders.Where(order => order.OrderStatus == "Pending").ToList();
 
-            // Her pending sipariş için priorityScore ve waitingTime'ı güncelliyoruz
             foreach (var order in pendingOrders)
             {
 
@@ -359,7 +341,7 @@ namespace OrderManagement.Services
             double waitingScore = waitingTimeInSeconds * 0.5;
             return basePriority + (int)waitingScore;
         }
-        // OrderService'e gerekli metot eklendi
+
         public async Task<IEnumerable<Order>> GetOrdersByCustomerIdAsync(int customerId)
         {
             var allOrders = await _orderRepository.GetAllAsync();

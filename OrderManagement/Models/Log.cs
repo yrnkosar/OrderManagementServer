@@ -25,7 +25,7 @@ public partial class Log
 
     public string? Result { get; set; }
 
-    // İlişkiler
+ 
     public Order Order { get; set; } = null!;
     public Customer Customer { get; set; } = null!;
 }

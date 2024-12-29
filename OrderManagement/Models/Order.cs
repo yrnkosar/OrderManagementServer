@@ -24,7 +24,7 @@ public partial class Order
 
     public virtual Customer Customer { get; set; } = null!;
 
-   // public virtual ICollection<Log> Logs { get; set; } = new List<Log>();
+
 
     public virtual Product Product { get; set; } = null!;
 }

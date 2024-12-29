@@ -13,10 +13,15 @@ namespace OrderManagement.Repositories
         {
         }
 
-        // Ekstra işlemler burada yapılabilir (örneğin Premium müşteriler için özel sorgular).
+     
         public async Task<IEnumerable<Customer>> GetPremiumCustomersAsync()
         {
             return await _context.Customers.Where(c => c.CustomerType == "Premium").ToListAsync();
+        }
+        public async Task AddAsync(Customer customer)
+        {
+            await _context.Customers.AddAsync(customer);  
+            await _context.SaveChangesAsync();            
         }
     }
 }

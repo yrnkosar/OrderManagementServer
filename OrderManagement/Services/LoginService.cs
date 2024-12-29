@@ -19,13 +19,12 @@ namespace OrderManagement.Services
             var customer = await _customerRepository.GetAllAsync();
             var foundCustomer = customer.FirstOrDefault(c => c.CustomerName == customerName && c.CustomerPassword == password);
 
-            // Eğer kullanıcı Adminse, başarılı olarak kabul edilir.
             if (foundCustomer != null && foundCustomer.CustomerType == "Admin")
             {
                 return foundCustomer;
             }
 
-            return foundCustomer; // Premium veya Normal kullanıcılar için doğrulama yapılır.
+            return foundCustomer; 
         }
     }
 }

@@ -21,7 +21,7 @@ namespace OrderManagement.Controllers
             _logService = logService;
             _userService = userService;
         }
-        // GET api/log
+ 
         [HttpGet]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<Log>>> GetLogs()
@@ -31,20 +31,20 @@ namespace OrderManagement.Controllers
             {
                 return NotFound();
             }
-            return Ok(logs);  // Swagger üzerinden erişilebilir
+            return Ok(logs);  
         }
 
         [HttpGet("my-logs")]
         public async Task<ActionResult<IEnumerable<Log>>> GetMyLogs()
         {
-            // Oturum açmış kullanıcının kimliğini al
+           
             var user = User;
             var userId = await _userService.GetCurrentUserIdAsync(user);
 
             if (userId == null)
                 return Unauthorized("Geçersiz kullanıcı bilgisi");
 
-            // Kullanıcının loglarını al
+           
             var myLogs = await _logService.GetLogsByCustomerIdAsync(int.Parse(userId));
 
             if (myLogs == null || !myLogs.Any())
